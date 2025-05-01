@@ -1,0 +1,18 @@
+aiofile # for async file operations
+anthropic # for LLM API access from Anthropic
+coverage # for test coverage
+duckdb # for database operations
+flask # for web framework
+flake8 # for linting
+httpx # for async HTTP requests
+jinja2 # for templating
+mcp # for Claude tool server API
+multiformats # for CID creation
+mypy # for type checking
+numpy # for numerical operations
+openai # for LLM api access from OpenAI
+psutil # for system and process utilities
+pydantic # for data validation and settings management
+pytest # for testing
+pyyaml # for YAML parsing
+tqdm # for progress bars

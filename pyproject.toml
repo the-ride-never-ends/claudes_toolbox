@@ -1,0 +1,29 @@
+[project]
+name = "claudes_toolbox"
+version = "0.1.0"
+description = "Serves utility programs from Claude's Toolbox using the Model Context Protocol (MCP). Allows agentic LLMs to use the programs regardless of their API interface (e.g. Claude Code, Claude Desktop, etc.)."
+readme = "README.md"
+authors = [
+    { name = "claudes_toolbox" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "aiofile>=3.9.0",
+    "anthropic>=0.50.0",
+    "coverage>=7.8.0",
+    "duckdb>=1.2.2",
+    "flake8>=7.2.0",
+    "flask>=3.1.0",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "mcp[cli]>=1.6.0",
+    "multiformats>=0.3.1.post4",
+    "mypy>=1.15.0",
+    "numpy>=2.2.5",
+    "openai>=1.76.0",
+    "psutil>=7.0.0",
+    "pydantic>=2.11.3",
+    "pytest>=8.3.5",
+    "pyyaml>=6.0.2",
+    "tqdm>=4.67.1",
+]

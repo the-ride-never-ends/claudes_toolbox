@@ -1,0 +1,26 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+.venv/
+# Configuration files
+.env
+configs.yaml
+
+# Data files
+data/
+!data/_data_goes_here.txt
+
+*.md
+!README.md
+
+uv.lock
+.python-version
+
+*.log
