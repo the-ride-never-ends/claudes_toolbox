@@ -90,94 +90,42 @@ run_linux.config
 ```
 
 ### Server hosted on Windows:
+```json
+"claudes-toolbox": {
+    "command": "cmd.exe",
+    "args": [
+        "/c",
+        "C:\\path\\to\\start_server.bat"
+    ]
+}
+```
 
 4. Git-clone the other repositories into the `claude_toolbox` directory:
 
 ```bash
-git clone https://github.com/the-ride-never-ends/documentation_generator claude_toolbox
-git clone https://github.com/the-ride-never-ends/test_generator claude_toolbox
-git clone https://github.com/the-ride-never-ends/run_tests_and_save_their_results claude_toolbox
-git clone https://github.com/the-ride-never-ends/lint_a_python_codebase claude_toolbox
-git clone https://github.com/the-ride-never-ends/codebase_search claude_toolbox
+cd claudes_toolbox/tools
+git clone https://github.com/the-ride-never-ends/documentation_generator
+git clone https://github.com/the-ride-never-ends/test_generator
+git clone https://github.com/the-ride-never-ends/run_tests_and_save_their_results
+git clone https://github.com/the-ride-never-ends/lint_a_python_codebase
+git clone https://github.com/the-ride-never-ends/codebase_search
 ```
 
-Note: Each tool is a standalone CLI utility and are currently setup to use their own virtual environments. 
+Note: Each tool is a standalone CLI utility and can be setup to use their own virtual environments. 
 
 
 The server will automatically activate the appropriate virtual environment for each tool when called.
 
 
- Unlike the MCP server, the tools use `pip` instead of `nv` for installation.
-
 ## Usage
+
+Integrated applications like Copilot, Claude Code, and Claude Desktop can call the server using the MCP protocol. The server starts automatically when the given command is executed. 
 
 The server works by:
 - Running tools through subprocess calls to the command line
 - Using a wrapper function that activates virtual environments
 - Exposing each tool with appropriate parameters via the MCP protocol
-- Running asynchronously with FastAPI/Uvicorn under the hood
 
-To start the server:
-
-```bash
-./start.sh
-```
-
-### Available Tools
-
-The server exposes these tools to AI assistants:
-
-#### test_generator
-```
-Generates test files based on JSON input
-```
-
-#### documentation_generator
-```
-Generates documentation from Python source code
-```
-
-#### lint_a_python_codebase
-```
-Fixes common linting issues in Python codebases
-```
-
-#### run_tests_and_save_their_results
-```
-Runs tests, type checking, and linting for Python projects
-```
-
-#### codebase_search
-```
-Searches codebases for specific patterns with structured output
-```
-
-## Examples
-
-Using the test generator via MCP:
-
-```python
-# Example from an AI assistant calling the test generator
-result = test_generator(
-    name="string_validation",
-    description="Tests for string validation functions",
-    test_parameter_json="test_params.json",
-    output_dir="tests",
-    harness="pytest"
-)
-```
-
-Running the documentation generator:
-
-```python
-# Example from an AI assistant calling the documentation generator
-result = documentation_generator(
-    input_path="my_project/src",
-    output_path="docs",
-    docstring_style="google",
-    inheritance=True
-)
-```
 
 ## Configuration
 

@@ -20,9 +20,9 @@ set +a
 
 # Activate the virtual environment, then rn the Python script
 if [ -d "venv" ]; then
-    source venv/bin/activate && python app.py
+    source venv/bin/activate && python server.py
 elif [ -d ".venv" ]; then
-    source .venv/bin/activate && uv run app.py
+    source .venv/bin/activate && uv run server.py
 else
     exit 1
 fi

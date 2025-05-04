@@ -6,6 +6,7 @@ from __version__ import __version__
 
 from dataclasses import dataclass, field
 from functools import cached_property
+import logging
 import os
 from pathlib import Path
 from typing import LiteralString
@@ -38,10 +39,11 @@ class Configs:
         REQUIREMENTS_FILE_PATHS: List of paths for requirements.txt files.
     """
     verbose: bool = field(default=True, metadata={"description": "Enable verbose output"})
-    log_level: bool = field(default=False, metadata={"description": "The log level for the server and logger."})
+    log_level: int = field(default=logging.DEBUG, metadata={"description": "The log level for the server and logger."})
     host: str = field(default="0.0.0.0", metadata={"description": "Host for the server"})
     port: int = field(default=8000, metadata={"description": "Port for the server"})
     reload: bool = field(default=True, metadata={"description": "Enable auto-reload"})
+    tool_timeout: int = field(default=60, metadata={"description": "Timeout for tool execution in seconds"})
 
     @property
     def VERSION(self) -> LiteralString:
@@ -77,11 +79,25 @@ class Configs:
     @cached_property
     def REQUIREMENTS_FILE_PATHS(self) -> list[Path]:
         """List of paths for requirements.txt files."""
-        _available_tools = [
+        _paths = [
             path for path in self.ROOT_DIR.glob("**/requirements.txt")
             if path.is_file() and path.name == "requirements.txt" and path.exists()
         ]
-        return _available_tools
+        return _paths
+
+    def __getitem__(self, key: str) -> str:
+        """Get the value of a configuration setting by its key."""
+        if hasattr(self, key.lower()):
+            return getattr(self, key)
+        else:
+            raise KeyError(f"Configuration key '{key}' not found.")
+
+    def __setitem__(self, key: str, value: str) -> None:
+        """Set the value of a configuration setting by its key."""
+        if hasattr(self, key.lower()):
+            setattr(self, key, value)
+        else:
+            raise KeyError(f"Configuration key '{key}' not found.")
 
 
 # Load the YAML file and parse it into the dataclass

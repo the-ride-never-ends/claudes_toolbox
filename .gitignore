@@ -24,3 +24,8 @@ uv.lock
 .python-version
 
 *.log
+# Import the tool folders, but not the tools themselves
+tools/cli/
+!tools/cli/__init__.py
+tools/functions/
+!tools/functions/__init__.py

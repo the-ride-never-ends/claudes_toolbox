@@ -8,8 +8,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib
 import os
+from pathlib import Path
 import sys
+import traceback
+
+
 
 import mcp.server
 
@@ -19,56 +24,199 @@ import mcp.server
 # import yaml
 
 
-from configs import configs
-from logger import logger
-from utils.install_tool_dependencies_to_shared_venv import install_tool_dependencies_to_shared_venv
 
-from typing import Any
+from configs import configs, Configs
+from logger import logger, mcp_logger
+from utils.install_tool_dependencies_to_shared_venv import install_tool_dependencies_to_shared_venv
+from utils.turn_argparse_help_into_docstring import turn_argparse_help_into_docstring
+
+
+
+from typing import Any, Callable
 import httpx
 from mcp.server.fastmcp import FastMCP
-
-import subprocess
-from subprocess import CalledProcessError
-from typing import Any
+from mcp.types import CallToolResult
 
 # Initialize FastMCP server
 mcp = FastMCP("claudes_toolbox")
 
 
-from .utils.mcp_print import mcp_print
-from .utils.run_cli_tool import run_cli_tool
+
+from utils.run_tool import run_tool
+
+
+TOOL = {
+    "name": "claudes_toolbox",
+    "description": "A toolbox for Claude AI.",
+    "path": Path(__file__).resolve(),
+}
+
+THIS_FILE = Path(__file__)
+THIS_DIR = THIS_FILE.parent
+PATHS_DICT = {
+    "this_file": THIS_FILE,
+    "this_dir": THIS_DIR,
+    "project_dir": THIS_DIR.parent,
+    "venv_dir": THIS_DIR / ".venv",
+    "server_dir": THIS_DIR,
+    "tools_dir": THIS_DIR / "tools",
+}
+for key, path in PATHS_DICT.items():
+    if not path.exists():
+        raise FileNotFoundError(f"Path '{path}' does not exist.")
+    else:
+        PATHS_DICT[key] = path.resolve()
+
+
+class ClaudesToolboxServer:
+    """
+    Organizing class for the server and its tools.
+    """
+
+    def __init__(self, 
+                configs: Configs = None, 
+                resources: dict[str, Callable] = None
+                ) -> None:
+        self.configs = configs
+        self.resources = resources
+
+        self.tools: list[dict[str, Any]] = self.configs["tools"]
+        self.__run_tool: Callable = self.resources["run_tool"]
+        self.__mcp_print: Callable = self.resources["mcp_logger"]
+        self.__install_tool_dependencies_to_shared_venv: Callable = self.resources["install_tool_dependencies_to_shared_venv"]
+        self.__turn_argparse_help_into_docstring: Callable = self.resources["turn_argparse_help_into_docstring"]
+
+        self.server = self.resources["server"]
+
+        self.setup()
+
+    def setup(self) -> None:
+        assert hasattr(self.server, "add_tool"), "Server does not have 'add_tool' method"
+        assert hasattr(self.server, "run"), "Server does not have 'run' method"
+        if not self.tools:
+            raise ValueError("No tools found. Please check the tool paths.")
+        self._validate_tool_paths()
+        self._install_tool_dependencies_to_shared_venv()
+
+    def _validate_tool_paths(self) -> None:
+        """
+        Validate the tool paths.
+        """
+        for tool in self.tools:
+            if not Path(tool["path"]).exists():
+                raise FileNotFoundError(f"Tool '{tool['name']}' not found at {tool['path']}.")
+
+    def _install_tool_dependencies_to_shared_venv(self) -> None:
+        """
+        Install tool dependencies to the server's shared virtual environment.
+        """
+        requirements_file_paths = []
+        for tool in self.tool_paths:
+            requirements_file_path = Path(tool["path"]).parent / "requirements.txt"
+            if requirements_file_path.exists():
+                requirements_file_paths.append(requirements_file_path)
+        self.__install_tool_dependencies_to_shared_venv(requirements_file_paths)
+
+    def _sanitize_tool_inputs(self, *args, **kwargs) -> None:
+        """
+        Sanitize CLI tool inputs to prevent various injection attacks.
+        
+        Args:
+            args: Positional arguments.
+            kwargs: Keyword arguments.
+
+        Raises:
+            ValueError: If any of the inputs are invalid.
+        """ 
+        pass
+
+    def _turn_argparse_help_into_docstring(self, help_message: str) -> str:
+        """
+        Converts command-line argument documentation to Google-style docstring.
+
+        Args:
+            help_message (str): The help message from argparse.
+        """
+        self.__turn_argparse_help_into_docstring(help_message)
+
+
+    def _run_tool(self, cmd: list[str], tool_name: str) -> str:
+        self.__run_tool(cmd, tool_name)
+
+    def load_tools(self) -> dict[str, Any]:
+        """
+        Get the attributes of a tool.
+        """
+        _tools = []
+        for tool in self.tools:
+            tool_name = tool["name"]
+            tool_path: Path = Path(tool["path"])
+
+            # Get its description by running the tool with --help
+            # This will also check if the tool can be found and run
+            cmd = ["python ", tool_path, "--help"]
+            help_message = self._run_tool(cmd, tool_name)
+            if not help_message:
+                self._mcp_print(f"'{tool_name}' did not return a help message. Skipping.")
+                continue
+            # Convert the help message to a docstring
+            description = self._turn_argparse_help_into_docstring(help_message)
+        raise FileNotFoundError(f"Could not find any tools.")
+
+    def register_tools(self) -> None:
+        """
+        Register tools with the server.
+        """
+        for tool in self.tools:
+            func = tool.pop("func")
+            self.server.add_tool(func, **tool)
+
+    def run(self) -> None:
+        """
+        Run the server.
+        """
+        self.server.run(transport="stdio")
+
 
 
 @mcp.tool()
-def write_file_in_linux(file_path: str, content: str) -> None:
+def write_file_in_linux(file_path: str, content: str) -> CallToolResult:
     """
     Write content to a file in Linux. 
     This is a test to see if Claude can use a server tool served from WSL.
+    Note that this tool will *only* work with linux-style paths.
 
     Args:
         file_path: Path of the file to write.
         content: Content to write to the file.
     """
-    logger.info("TESTING WRITE FILE IN LINUX")
-    mcp_print(f"Writing to content to {file_path}")
-    if "\\" in file_path:
-        # Convert Windows-style path to Linux-style path
-        file_path = file_path.replace("\\", "/")
-        mcp_print(f"Changed windows file path to Linux. Path is now '{file_path}'")
+    mcp_logger("TESTING WRITE FILE IN LINUX")
+    mcp_logger(f"Writing to content to {file_path}")
 
-    # Get the home directory so that Claude doesn't write to the root directory
+    # Get and append the home directory so that Claude doesn't write to the root directory
     if os.name != "nt":
         if "~" not in file_path:
             home_dir = os.path.expanduser("~")
-            file_path = os.path.join(home_dir, file_path)
-            mcp_print(f"Original path was outside home directory. Path is now '{file_path}'")
+            if home_dir not in file_path:
+                # If the home directory is not in the path, add it
+                mcp_logger(f"Adding home directory to path '{file_path}'")
+                file_path = os.path.join(home_dir, file_path)
+            mcp_logger(f"Original path did not have '~' in it. Path is now '{file_path}'")
+
+    # Make path object, because fuck os.path
+    path = Path(file_path)
+    mcp_logger(f"File path object: {path}\nabsolute path: {path.resolve()}")
 
     try:
-        with open(file_path, "w", newline="\n") as file:
+        target_dir = path.parent
+        if not target_dir.exists():
+            raise FileNotFoundError(f"Directory '{target_dir}' does not exist. Please create it first.")
+
+        with open(path.resolve(), "w", newline="\n") as file:
             file.write(content)
-        mcp_print(f"File written to {file_path}")
+        return run_tool(f"File written to {file_path}")
     except Exception as e:
-        mcp_print(f"Error writing to file: {e}")
+        return run_tool(e)
 
 
 @mcp.tool()
@@ -77,7 +225,7 @@ def test_generator(name: str,
                    test_parameter_json: str, 
                    output_dir: str = "tests", 
                    harness: str = "unittest"
-                ):
+                ) -> CallToolResult:
     """Generate test files based on JSON input.
     
     Args:
@@ -99,17 +247,18 @@ def test_generator(name: str,
         - docstring-style: Docstring style to parse
     """
     # Execute test generator command with appropriate arguments
+
+    path = PATHS_DICT["claudes_toolbox"] / "test_generator" /  "test_generator.py"
+
     cmd = [
-        "python", "-m", "test_generator",
+        "python", "-m", f"{path}",
         "--name", f"{name}",
         "--description", f"{description}",
         "--test_parameter_json", f"{test_parameter_json}", 
         "--output_dir", f"{output_dir}",
         "--harness", f"{harness}"
     ]
-
-    stdout = run_cli_tool(cmd, "Test Generator")
-    return stdout
+    return run_tool(cmd, "Test Generator")
 
 
 @mcp.tool()
@@ -118,7 +267,7 @@ def documentation_generator(input_path: str,
                             docstring_style: str = "google", 
                             ignore: list[str] = None, 
                             inheritance: bool = True,
-                            ):
+                            ) -> CallToolResult:
     """Generate documentation from Python source code.
     
     Args:
@@ -141,7 +290,7 @@ def documentation_generator(input_path: str,
         - self-doc: Enable self-documentation mode
     """
     cmd = [
-        "python", "documentation_generator.py",
+        "python", "~/documentation_generator.py",
         "--input", f"{input_path}",
         "--output", f"{output_path}",
         "--docstring-style", f"{docstring_style}"
@@ -155,9 +304,13 @@ def documentation_generator(input_path: str,
 
     if inheritance:
         cmd.append("--inheritance")
+    try:
+        return run_tool(cmd, "Documentation Generator")
+    except:
+        # If there's an error, move up a directory and try again
+        cmd[1] = "~/documentation_generator/documentation_generator.py"
+        return run_tool(cmd, "Documentation Generator")
 
-    stdout = run_cli_tool(cmd, "Documentation Generator")
-    return stdout
 
 
 @mcp.tool()
@@ -168,7 +321,7 @@ def lint_a_python_codebase(path: str = ".",
                           no_trailing: bool = False,
                           no_newlines: bool = False,
                           dry_run: bool = False, 
-                          verbose: bool = False):
+                          verbose: bool = False) -> CallToolResult:
     """Fix common linting issues in Python codebases.
     
     Args:
@@ -208,8 +361,7 @@ def lint_a_python_codebase(path: str = ".",
     if verbose:
         cmd.append("--verbose")
 
-    stdout = run_cli_tool(cmd, "Lint Python Codebase")
-    return stdout
+    return run_tool(cmd, "Lint Python Codebase")
 
 
 @mcp.tool()
@@ -218,7 +370,7 @@ def run_tests_and_save_their_results(path: str = ".",
                                      mypy: bool = False, 
                                      flake8: bool = False, 
                                      lint_only: bool = False, 
-                                     respect_gitignore: bool = False) -> str:
+                                     respect_gitignore: bool = False) -> CallToolResult:
     """Run unit tests, type checking, and linting for a specified Python project.
     
     Args:
@@ -256,7 +408,7 @@ def run_tests_and_save_their_results(path: str = ".",
     if respect_gitignore:
         cmd.append("--respect-gitignore")
 
-    stdout = run_cli_tool(cmd, "Run Tests and Save Results")
+    stdout = run_tool(cmd, "Run Tests and Save Results")
     return stdout
 
 
@@ -274,7 +426,7 @@ def codebase_search(pattern: str,
                    output: str = None,
                    compact: bool = False,
                    group_by_file: bool = False,
-                   summary: bool = False) -> str:
+                   summary: bool = False) -> CallToolResult:
     """Search codebase for patterns with structured output.\n
 
     Args:\n
@@ -335,20 +487,80 @@ def codebase_search(pattern: str,
     if summary:
         cmd.append("--summary")
     
-    stdout = run_cli_tool(cmd, "Codebase Search")
+    stdout = run_tool(cmd, "Codebase Search")
     return stdout
 
 
+import importlib
+
+def get_function_tools_from_files() -> None:
+    """
+    Load functions from Python files in the tools directory and register them with the server
+
+    This function scans the tools directory for Python files, imports them, and registers any
+    functions that do not start with an underscore as tools in the server.
+    """
+    tool_dir = Path(__file__).parent / "tools"
+    if not tool_dir.exists():
+        logger.warning(f"Tools directory not found at {tool_dir}")
+        return
+
+    # Find all Python files that don't start with underscore
+    tool_files = [
+        file for file in tool_dir.glob("*.py") 
+        if file.is_file() 
+        and not file.name.startswith("_")
+    ]
+
+    for file in tool_files:
+        module_name = file.stem
+        try:
+            # Import the module using its relative path
+            module = importlib.import_module(f"claudes_toolbox.tools.{module_name}")
+
+            # Find all functions in the module that don't start with underscore
+            for name in dir(module):
+                item = getattr(module, name)
+                if callable(item) and not name.startswith("_"):
+                    tool_name = f"{module_name}_{name}" if name != module_name else name
+                    tool_desc = item.__doc__ 
+                    if not tool_desc:
+                        logger.warning(f"Function '{name}' in module '{module_name}' has no docstring. Skipping.")
+                        continue
+
+                    # Register the function as a tool
+                    mcp.tool(name=tool_name, description=tool_desc)(item)
+                    logger.info(f"Registered tool: {tool_name}")
+        except ImportError as e:
+            logger.error(f"Error importing module {module_name}: {e}")
+        except Exception as e:
+            logger.error(f"Error loading tool from {file}: {e}")
+
+def get_cli_tools_from_files() -> None:
+    """
+    Load CLI tools from Python files in the tools directory and register them with the server.
+    The CLI tools should all be argparse-based and have a function called `main` that takes the same arguments as the CLI tool.
+    
+    """
+
 
 if __name__ == "__main__":
+    # Load dependencies
     install_tool_dependencies_to_shared_venv(configs.REQUIREMENTS_FILE_PATHS)
+
+    # Register function tools from files with the server
+    get_function_tools_from_files()
+
+    # Register standalone CLI tools with the server
+    get_cli_tools_from_files()
+
     keyboard_interrupt = False
     try:
         mcp.run(transport="stdio")
     except KeyboardInterrupt:
         keyboard_interrupt = True
-        mcp_print("Server stopped by user.")
+        mcp_logger("Server stopped by user.")
     finally:
         if not keyboard_interrupt:
-            mcp_print("Server stopped.")
+            mcp_logger("Server stopped.")
         sys.exit(0)

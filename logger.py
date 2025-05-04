@@ -1,9 +1,13 @@
+from datetime import datetime
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+import traceback
+import sys
+from typing import Callable
 
 
-from configs import configs
+from configs import configs, Configs
 
 
 def get_logger(name: str,
@@ -54,4 +58,76 @@ def get_logger(name: str,
 
     return logger
 
+
+class McpLogger:
+    """
+    Custom logger for MCP server.
+    Since MCP servers log to a specific log file, 
+        and since it relies on the print command to log messages, 
+        we need to create a custom logger to enforce formatting.
+    """
+
+    def __init__(self, 
+                configs: Configs = None, 
+                resources: dict[str, Callable] = None
+                ) -> None:
+        self.configs = configs
+        self.resources = resources
+
+        self.log_level: int = self.configs.log_level or logging.DEBUG
+        if resources:
+            try:
+                self._print: Callable = self.resources['print']
+            except KeyError:
+                pass # Default to the built-in print function
+
+    def _print(self, message: str) -> None:
+        """Prints a message to the console and log file.
+
+        Args:
+            message: The message to print.
+        """
+        print(message, file=sys.stderr)
+
+    def _format_message(self, level_name: str, message: str) -> str:
+        """Formats the log message with a timestamp and level name."""
+        time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        return f"{time} [mcp-logger] [{level_name}] {message}"
+
+    def info(self, message: str):
+        """Logs an info message."""
+        if self.log_level <= logging.INFO:
+            self._print(self._format_message("INFO", message))
+
+    def warning(self, message: str):
+        """Logs a warning message."""
+        if self.log_level <= logging.WARNING:
+            self._print(self._format_message("WARNING", message))
+
+    def error(self, message: str):
+        """Logs an error message."""
+        if self.log_level <= logging.ERROR:
+            self._print(self._format_message("ERROR", message))
+
+    def debug(self, message: str):
+        """Logs a debug message."""
+        if self.log_level <= logging.DEBUG:
+            self._print(self._format_message("DEBUG", message))
+
+    def critical(self, message: str):
+        """Logs a critical message."""
+        if self.log_level <= logging.CRITICAL:
+            self._print(self._format_message("CRITICAL", message))
+
+    def exception(self, message: str, exc_info=True):
+        """Logs an exception message."""
+        if self.log_level <= logging.ERROR:
+            error_message = message
+            if exc_info:
+                error_message += f"\n{traceback.format_exc()}"
+            self._print(self._format_message("EXCEPTION", error_message))
+
+# Instantiate the logger singletons.
 logger = get_logger(__name__, log_file_name=f'{configs.PROJECT_NAME}.log', level=configs.log_level)
+
+mcp_logger = McpLogger(configs=configs)
