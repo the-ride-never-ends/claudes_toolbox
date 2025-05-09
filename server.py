@@ -81,8 +81,8 @@ class ClaudesToolboxServer:
         self.resources = resources
 
         self.tools: list[dict[str, Any]] = self.configs["tools"]
+
         self.__run_tool: Callable = self.resources["run_tool"]
-        self.__mcp_print: Callable = self.resources["mcp_logger"]
         self.__install_tool_dependencies_to_shared_venv: Callable = self.resources["install_tool_dependencies_to_shared_venv"]
         self.__turn_argparse_help_into_docstring: Callable = self.resources["turn_argparse_help_into_docstring"]
 
@@ -143,6 +143,7 @@ class ClaudesToolboxServer:
     def _run_tool(self, cmd: list[str], tool_name: str) -> str:
         self.__run_tool(cmd, tool_name)
 
+
     def load_tools(self) -> dict[str, Any]:
         """
         Get the attributes of a tool.
@@ -177,46 +178,6 @@ class ClaudesToolboxServer:
         """
         self.server.run(transport="stdio")
 
-
-
-@mcp.tool()
-def write_file_in_linux(file_path: str, content: str) -> CallToolResult:
-    """
-    Write content to a file in Linux. 
-    This is a test to see if Claude can use a server tool served from WSL.
-    Note that this tool will *only* work with linux-style paths.
-
-    Args:
-        file_path: Path of the file to write.
-        content: Content to write to the file.
-    """
-    mcp_logger("TESTING WRITE FILE IN LINUX")
-    mcp_logger(f"Writing to content to {file_path}")
-
-    # Get and append the home directory so that Claude doesn't write to the root directory
-    if os.name != "nt":
-        if "~" not in file_path:
-            home_dir = os.path.expanduser("~")
-            if home_dir not in file_path:
-                # If the home directory is not in the path, add it
-                mcp_logger(f"Adding home directory to path '{file_path}'")
-                file_path = os.path.join(home_dir, file_path)
-            mcp_logger(f"Original path did not have '~' in it. Path is now '{file_path}'")
-
-    # Make path object, because fuck os.path
-    path = Path(file_path)
-    mcp_logger(f"File path object: {path}\nabsolute path: {path.resolve()}")
-
-    try:
-        target_dir = path.parent
-        if not target_dir.exists():
-            raise FileNotFoundError(f"Directory '{target_dir}' does not exist. Please create it first.")
-
-        with open(path.resolve(), "w", newline="\n") as file:
-            file.write(content)
-        return run_tool(f"File written to {file_path}")
-    except Exception as e:
-        return run_tool(e)
 
 
 @mcp.tool()
@@ -491,19 +452,16 @@ def codebase_search(pattern: str,
     return stdout
 
 
+# get_function_tools_from_files.py
 import importlib
+import inspect
+from pathlib import Path
 
-def get_function_tools_from_files() -> None:
-    """
-    Load functions from Python files in the tools directory and register them with the server
 
-    This function scans the tools directory for Python files, imports them, and registers any
-    functions that do not start with an underscore as tools in the server.
-    """
-    tool_dir = Path(__file__).parent / "tools"
+def _load_tool_files(tool_dir: Path) -> list[Path]:
     if not tool_dir.exists():
         logger.warning(f"Tools directory not found at {tool_dir}")
-        return
+        raise FileNotFoundError(f"Tools directory not found at {tool_dir}")
 
     # Find all Python files that don't start with underscore
     tool_files = [
@@ -511,37 +469,101 @@ def get_function_tools_from_files() -> None:
         if file.is_file() 
         and not file.name.startswith("_")
     ]
+    if not tool_files:
+        logger.warning(f"No tool files found in {tool_dir}")
+        raise FileNotFoundError(f"No tool files found in {tool_dir}")
+    return tool_files
+
+
+def get_function_tools_from_files(mcp: FastMCP) -> None:
+    """
+    Load functions from Python files in the tools directory and register them with the server
+
+    This function scans the tools directory for Python files, imports them, and registers any
+    functions that do not start with an underscore as tools in the server.
+    """
+    tool_dir = Path(__file__).parent / "tools" / "functions"
+    tool_files = _load_tool_files(tool_dir)
 
     for file in tool_files:
         module_name = file.stem
         try:
             # Import the module using its relative path
-            module = importlib.import_module(f"claudes_toolbox.tools.{module_name}")
+            module = importlib.import_module(f"tools.functions.{module_name}")
 
             # Find all functions in the module that don't start with underscore
             for name in dir(module):
                 item = getattr(module, name)
-                if callable(item) and not name.startswith("_"):
+                #mcp_logger.debug(f"Checking item '{name}' in module '{module_name}'")
+
+                # Skip imports.
+                # We check this by making the name of the file the same as the function name
+                if name not in module_name:
+                    continue
+
+                # Make sure it's a function (as opposed to a class, coroutine, etc.)
+                # and that it's not private
+                if inspect.isfunction(item) and not name.startswith("_"):
+                    tool_name =  name
+                    tool_desc = item.__doc__ 
+                    if not tool_desc:
+                        logger.warning(f"Function '{name}' in module '{module_name}' has no docstring. Skipping.")
+                        continue
+
+                    # Load and register the function as a tool
+                    func = getattr(module, name)
+                    mcp.add_tool(func, name=tool_name, description=tool_desc)
+                    mcp_logger.info(f"Registered tool: {tool_name}")
+
+        except ImportError as e:
+            mcp_logger.error(f"Error importing module {module_name}: {e}")
+        except Exception as e:
+            mcp_logger.error(f"Error loading tool from {file}: {e}")
+
+
+# get_function_tools_from_files.py
+import importlib
+import inspect
+from pathlib import Path
+
+def get_cli_tools_from_files(mcp: FastMCP) -> None:
+    """
+    Load CLI tools from Python files in the tools directory and register them with the server.
+    The CLI tools should all be argparse-based and have a function called `main` that takes the same arguments as the CLI tool.
+    """
+    # Get all Python files in the CLI tools directory
+    cli_tool_dir = Path(__file__).parent / "tools" / "cli"
+    try:
+        tool_files = _load_tool_files(cli_tool_dir)
+    except FileNotFoundError as e:
+        logger.error(f"Error loading CLI tool files: {e}")
+        return
+
+    for file in tool_files:
+        module_name = file.stem
+        try:
+            # Import the module using its relative path
+            module = importlib.import_module(f"tools.cli.{module_name}")
+
+            # Find all the files called "main" or have a function called "main"
+            for name in dir(module):
+                item = getattr(module, name)
+                if inspect.isfunction(item) and name == "main":
                     tool_name = f"{module_name}_{name}" if name != module_name else name
                     tool_desc = item.__doc__ 
                     if not tool_desc:
                         logger.warning(f"Function '{name}' in module '{module_name}' has no docstring. Skipping.")
                         continue
 
-                    # Register the function as a tool
-                    mcp.tool(name=tool_name, description=tool_desc)(item)
-                    logger.info(f"Registered tool: {tool_name}")
-        except ImportError as e:
-            logger.error(f"Error importing module {module_name}: {e}")
-        except Exception as e:
-            logger.error(f"Error loading tool from {file}: {e}")
+                    # Load and register the function as a tool
+                    func = getattr(module, name)
+                    mcp.add_tool(func, name=tool_name, description=tool_desc)
+                    mcp_logger.info(f"Registered CLI tool: {tool_name}")
 
-def get_cli_tools_from_files() -> None:
-    """
-    Load CLI tools from Python files in the tools directory and register them with the server.
-    The CLI tools should all be argparse-based and have a function called `main` that takes the same arguments as the CLI tool.
-    
-    """
+        except ImportError as e:
+            mcp_logger.error(f"Error importing module {module_name}: {e}")
+        except Exception as e:
+            mcp_logger.error(f"Error loading tool from {file}: {e}")
 
 
 if __name__ == "__main__":
@@ -549,18 +571,18 @@ if __name__ == "__main__":
     install_tool_dependencies_to_shared_venv(configs.REQUIREMENTS_FILE_PATHS)
 
     # Register function tools from files with the server
-    get_function_tools_from_files()
+    get_function_tools_from_files(mcp)
 
     # Register standalone CLI tools with the server
-    get_cli_tools_from_files()
+    get_cli_tools_from_files(mcp)
 
     keyboard_interrupt = False
     try:
         mcp.run(transport="stdio")
     except KeyboardInterrupt:
         keyboard_interrupt = True
-        mcp_logger("Server stopped by user.")
+        mcp_logger.info("Server stopped by user.")
     finally:
         if not keyboard_interrupt:
-            mcp_logger("Server stopped.")
+            mcp_logger.info("Server stopped.")
         sys.exit(0)

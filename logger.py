@@ -8,7 +8,7 @@ from typing import Callable
 
 
 from configs import configs, Configs
-
+from utils.mcp_print import mcp_print
 
 def get_logger(name: str,
                 log_file_name: str = 'app.log',
@@ -129,5 +129,5 @@ class McpLogger:
 
 # Instantiate the logger singletons.
 logger = get_logger(__name__, log_file_name=f'{configs.PROJECT_NAME}.log', level=configs.log_level)
-
-mcp_logger = McpLogger(configs=configs)
+resources = {"print": mcp_print}
+mcp_logger = McpLogger(configs=configs, resources=resources)

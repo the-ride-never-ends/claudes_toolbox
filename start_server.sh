@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# Check if the program has been opened via WSL command
+# Load bash profile or zshrc
 source ~/.bashrc 2>/dev/null || source ~/.bash_profile 2>/dev/null || source ~/.zshrc 2>/dev/null
 
 # Change to the directory where the script is located.
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 cd "$SCRIPT_DIR"
 
-# Check if the script --in
-# If it doesn't, run the install script.
+# Check if we have a virtual environment in the current directory.
+# If we don't, run the install script.
 if [ ! -d "venv" ] && [ ! -d ".venv" ]; then
-    bash "install_claudes_toolbox_server.sh"
+    bash "install_server.sh"
 fi
 
 # Import .env variables

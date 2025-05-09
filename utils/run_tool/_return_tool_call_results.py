@@ -1,4 +1,3 @@
-
 from typing import TypeAlias
 from mcp.types import CallToolResult, TextContent
 

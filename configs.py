@@ -44,6 +44,7 @@ class Configs:
     port: int = field(default=8000, metadata={"description": "Port for the server"})
     reload: bool = field(default=True, metadata={"description": "Enable auto-reload"})
     tool_timeout: int = field(default=60, metadata={"description": "Timeout for tool execution in seconds"})
+    load_from_paths_csv: bool = field(default=False, metadata={"description": "Load from paths CSV"})
 
     @property
     def VERSION(self) -> LiteralString:

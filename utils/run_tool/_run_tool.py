@@ -65,7 +65,7 @@ class _RunTool:
             A ResultObject object containing the result.
         """
         if self.configs.log_level == 10:
-            self._logger(f"Tool call result: {result}")
+            self._logger.debug(f"Tool call result: {result}")
         error = True if isinstance(result, Exception) else False
         msg = repr(result) if error else "Success"
         content = self._return_text_content(result, msg)
@@ -83,7 +83,7 @@ class _RunTool:
         Returns:
             A ResultObject object containing the result of the command.
         """
-        self._logger(f"Running '{func_name}' with command: {' '.join(cmd_list)}")
+        self._logger.debug(f"Running '{func_name}' with command: {' '.join(cmd_list)}")
 
         # Activate the virtual environment and run the command
         match os.name:
@@ -110,7 +110,7 @@ class _RunTool:
                         stderr=result.stderr,
                     ))
         except Exception as e:
-            self._logger(traceback.print_exc())
+            self._logger.exception(traceback.print_exc())
             return self.result(e)
 
 
@@ -121,7 +121,7 @@ class _RunTool:
         # Check if this is a CLI tool call (expected to have cmd and func_name)
         if len(args) == 2 and isinstance(args[0], list) and isinstance(args[1], str) and not kwargs:
             if self.configs.log_level == 10:
-                self._logger(f"Running CLI tool {args[1]} with command: {' '.join(args[0])}")
+                self._logger.debug(f"Running CLI tool {args[1]} with command: {' '.join(args[0])}")
 
             return self._run_cli_tool(args[0], args[1])
         # Otherwise, treat as a function call
@@ -138,7 +138,7 @@ class _RunTool:
             else:
                 func_args = args[1:] if len(args) > 1 else ()
                 if self.configs.log_level == 10:
-                    self._logger(f"Running function tool '{func}' with args: {args} and kwargs: {kwargs}")
+                    self._logger.debug(f"Running function tool '{func}' with args: {args} and kwargs: {kwargs}")
                 return self._run_func_tool(func, *func_args, **kwargs)
 
 
@@ -160,8 +160,20 @@ def run_tool(*args, **kwargs) -> ResultObject:
     Args:
         *args: Positional arguments to pass to the tool
         **kwargs: Keyword arguments to pass to the tool
+
     Returns:
         A CallToolResult object containing the result of the tool call.
     """
-    # Run the tool and get the result
     return _run_tool(*args, **kwargs)
+
+def return_results(input: Any) -> ResultObject:
+    """
+    Return the result of a tool call.
+
+    Args:
+        input: The result of the tool call, can be an arbitrary type or an exception.
+
+    Returns:
+        A ResultObject object containing the result.
+    """
+    return _run_tool.result(input)

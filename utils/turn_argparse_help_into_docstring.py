@@ -1,9 +1,9 @@
 import re
 from typing import Any, Type
-
+import typing
 
 def _string_type_hints_to_python_type(type_str: str) -> Type:
-    match type_str:
+    match type_str.lower():
         case "int":
             return int
         case "float":
@@ -20,10 +20,10 @@ def _string_type_hints_to_python_type(type_str: str) -> Type:
             return tuple
         case "set":
             return set
-        case "None":
+        case "none":
             return None
         case "any":
-            return Any
+            return typing.Any
         case _:  # Default to string
             return str
 
