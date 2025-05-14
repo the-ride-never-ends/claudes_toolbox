@@ -2,10 +2,10 @@ from typing import TypeAlias
 from mcp.types import CallToolResult, TextContent
 
 
-ResultObject: TypeAlias = CallToolResult
+CallToolResultType: TypeAlias = CallToolResult
 
 
-def return_tool_call_results(content: TextContent, error: bool = False) -> ResultObject:
+def return_tool_call_results(content: TextContent, error: bool = False) -> CallToolResult:
     """
     Returns a CallToolResult object for tool call response.
 

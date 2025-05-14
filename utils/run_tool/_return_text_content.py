@@ -1,7 +1,7 @@
 from typing import Any
 
 
-from mcp.types import TextContent
+from mcp.types import TextContent, ErrorData
 
 
 def return_text_content(input: Any, result_str: str) -> TextContent:

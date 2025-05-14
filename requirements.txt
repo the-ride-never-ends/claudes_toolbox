@@ -15,4 +15,7 @@ psutil # for system and process utilities
 pydantic # for data validation and settings management
 pytest # for testing
 pyyaml # for YAML parsing
+tiktoken # for tokenization
 tqdm # for progress bars
+elasticsearch # for search and indexing
+# redis # for caching and message brokering

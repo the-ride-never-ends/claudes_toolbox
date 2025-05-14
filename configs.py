@@ -1,5 +1,5 @@
 """
-Template for configuration settings.
+Server configuration settings.
 """
 from __version__ import __version__
 
@@ -45,6 +45,8 @@ class Configs:
     reload: bool = field(default=True, metadata={"description": "Enable auto-reload"})
     tool_timeout: int = field(default=60, metadata={"description": "Timeout for tool execution in seconds"})
     load_from_paths_csv: bool = field(default=False, metadata={"description": "Load from paths CSV"})
+    update_readme_when_settings_are_changed: bool = field(default=False, metadata={"description": "Update examples in README when settings are changed"})
+    search_dir: Path = field(default_factory=lambda: Path(__file__).parent, metadata={"description": "Directory to search for tools"})
 
     @property
     def VERSION(self) -> LiteralString:

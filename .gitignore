@@ -9,6 +9,7 @@ wheels/
 # Virtual environments
 .venv
 .venv/
+
 # Configuration files
 .env
 configs.yaml
@@ -29,3 +30,7 @@ tools/cli/
 !tools/cli/__init__.py
 tools/functions/
 !tools/functions/__init__.py
+
+# test reports
+test_reports/
+utils/run_tool/test.json

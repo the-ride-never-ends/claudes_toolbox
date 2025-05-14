@@ -6,10 +6,11 @@ import traceback
 from typing import Any, Callable
 
 
+
 from configs import configs, Configs
 from logger import mcp_logger
 from utils.run_tool._return_text_content import return_text_content
-from utils.run_tool._return_tool_call_results import return_tool_call_results, ResultObject
+from utils.run_tool._return_tool_call_results import return_tool_call_results, CallToolResultType
 
 
 class _RunTool:
@@ -24,7 +25,7 @@ class _RunTool:
         self._logger: Callable = self.resources['logger']
 
 
-    def _run_func_tool(self, func: Callable, *args, **kwargs) -> ResultObject:
+    def _run_func_tool(self, func: Callable, *args, **kwargs) -> CallToolResultType:
         """Run a function tool with the given function and arguments.
         
         This can be used to run both synchronous and asynchronous functions.
@@ -35,7 +36,7 @@ class _RunTool:
             **kwargs: Keyword arguments to pass to the function.
             
         Returns:
-            The result of the function execution wrapped in a ResultObject.
+            The result of the function execution wrapped in a CallToolResultType.
         """
         try:
             if asyncio.iscoroutinefunction(func):
@@ -51,10 +52,11 @@ class _RunTool:
                 result = func(*args, **kwargs)
             return self.result(f"\n'{func.__qualname__}' output: {result}")
         except Exception as e:
+            mcp_logger.exception(f"Exception occurred while running function tool '{func.__name__}': {e}")
             return self.result(e)
 
 
-    def result(self, result: Any) -> ResultObject:
+    def result(self, result: Any) -> CallToolResultType:
         """
         Format the result of a tool call.
 
@@ -62,17 +64,31 @@ class _RunTool:
             result: The result of the tool call, can be an arbitrary type or an exception.
 
         Returns:
-            A ResultObject object containing the result.
+            A CallToolResultType object containing the result.
         """
         if self.configs.log_level == 10:
-            self._logger.debug(f"Tool call result: {result}")
-        error = True if isinstance(result, Exception) else False
-        msg = repr(result) if error else "Success"
+            mcp_logger.debug(f"Tool call result: {result}")
+
+        error = False
+        match result:
+            case sub.CalledProcessError():
+                error = True
+                msg = f"CalledProcessError: {result.returncode}\nCommand: {result.cmd}\nOutput: {result.output}\nError: {result.stderr}"
+            case Exception():
+                error = True
+                msg = f"Error: {type(result).__name__}: {str(result)}"
+            case str():
+                msg = "Success"
+            case _:
+                # Handle any other result type
+                error = True # Default to error, since we shouldn't get unexpected types.
+                msg = f"Unexpected Result: {type(result).__name__}"
+
         content = self._return_text_content(result, msg)
         return self._return_tool_call_results(content, error)
 
 
-    def _run_cli_tool(self, cmd_list: list[str], func_name: str) -> ResultObject:
+    def _run_cli_tool(self, cmd_list: list[str], func_name: str) -> CallToolResultType:
         """
         Run a command line tool with the given command and function name.
 
@@ -81,9 +97,9 @@ class _RunTool:
             func_name: The name of the command line tool that called this.
 
         Returns:
-            A ResultObject object containing the result of the command.
+            A CallToolResultType object containing the result of the command.
         """
-        self._logger.debug(f"Running '{func_name}' with command: {' '.join(cmd_list)}")
+        mcp_logger.debug(f"Running '{func_name}' with command: {' '.join(cmd_list)}")
 
         # Activate the virtual environment and run the command
         match os.name:
@@ -95,7 +111,6 @@ class _RunTool:
                 cmd = ["bash", "-c", "source .venv/bin/activate && " + shlex.join(cmd_list)]
             case _:
                 return self.result(OSError(f"Unsupported operating system: {os.name}"))
-
         try:
             result = sub.run(cmd, capture_output=True, text=True, timeout=self.timeout)
             # Check if the command was successful and return the output
@@ -110,19 +125,16 @@ class _RunTool:
                         stderr=result.stderr,
                     ))
         except Exception as e:
-            self._logger.exception(traceback.print_exc())
+            mcp_logger.exception(traceback.print_exc())
             return self.result(e)
 
 
-    def __call__(self, *args, **kwargs) -> ResultObject:
+    def __call__(self, *args, **kwargs) -> CallToolResultType:
         """
         Route to the appropriate tool caller based on the given arguments and keyword arguments.
         """
         # Check if this is a CLI tool call (expected to have cmd and func_name)
         if len(args) == 2 and isinstance(args[0], list) and isinstance(args[1], str) and not kwargs:
-            if self.configs.log_level == 10:
-                self._logger.debug(f"Running CLI tool {args[1]} with command: {' '.join(args[0])}")
-
             return self._run_cli_tool(args[0], args[1])
         # Otherwise, treat as a function call
         else:
@@ -138,7 +150,7 @@ class _RunTool:
             else:
                 func_args = args[1:] if len(args) > 1 else ()
                 if self.configs.log_level == 10:
-                    self._logger.debug(f"Running function tool '{func}' with args: {args} and kwargs: {kwargs}")
+                    mcp_logger.debug(f"Running function tool '{func}' with args: {args} and kwargs: {kwargs}")
                 return self._run_func_tool(func, *func_args, **kwargs)
 
 
@@ -151,7 +163,7 @@ resources = {
 _run_tool = _RunTool(configs=configs, resources=resources)
 
 
-def run_tool(*args, **kwargs) -> ResultObject:
+def run_tool(*args, **kwargs) -> CallToolResultType:
     """
     Run a tool with the given arguments and keyword arguments.
 
@@ -166,7 +178,7 @@ def run_tool(*args, **kwargs) -> ResultObject:
     """
     return _run_tool(*args, **kwargs)
 
-def return_results(input: Any) -> ResultObject:
+def return_results(input: Any) -> CallToolResultType:
     """
     Return the result of a tool call.
 
@@ -174,6 +186,6 @@ def return_results(input: Any) -> ResultObject:
         input: The result of the tool call, can be an arbitrary type or an exception.
 
     Returns:
-        A ResultObject object containing the result.
+        A CallToolResultType object containing the result.
     """
     return _run_tool.result(input)

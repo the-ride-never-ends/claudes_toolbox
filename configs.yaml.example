@@ -3,3 +3,5 @@ log_level: 10
 host: '0.0.0.0'
 port: 8000
 reload: True
+load_from_paths_csv: True
+update_readme_when_settings_are_changed: False

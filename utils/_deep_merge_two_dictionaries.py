@@ -1,5 +1,6 @@
 from typing import Any, Dict
 
+
 def deep_merge_two_dictionaries(base_dict: Dict[str, Any], overlay_dict: Dict[str, Any]) -> Dict[str, Any]:
     """
     Recursively merge two dictionaries, with values from overlay_dict taking precedence.

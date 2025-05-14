@@ -8,7 +8,23 @@ from typing import Callable
 
 
 from configs import configs, Configs
-from utils.mcp_print import mcp_print
+
+# mcp_print.py
+import sys
+from typing import Any
+
+# TODO Figure out why this throws import errors when it's imported during unit tests.
+# from utils.mcp_print import mcp_print
+def mcp_print(input: Any) -> None:
+    """
+    Prints the input to the console.
+    This is needed because print() won't log to an MCP debug file.
+
+    Args:
+        input: The input to print.
+    """
+    print(input, file=sys.stderr)
+
 
 def get_logger(name: str,
                 log_file_name: str = 'app.log',
