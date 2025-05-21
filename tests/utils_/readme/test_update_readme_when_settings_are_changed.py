@@ -12,8 +12,8 @@ sys.modules['logger'] = MagicMock()
 from configs import configs
 from logger import logger
 
-# Append the parent directory to sys.path to import the module under test
-sys.path.append("..")
+# Append the root directory to sys.path for module imports
+sys.path.append(configs.ROOT_DIR.resolve())
 
 # Import the module under test
 from utils.readme.update_readme_when_settings_are_changed import (

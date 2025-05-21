@@ -23,7 +23,7 @@ class _RunTool:
         self._return_tool_call_results: Callable = self.resources['return_tool_call_results']
         self._return_text_content: Callable = self.resources['return_text_content']
         self._logger: Callable = self.resources['logger']
-
+    
 
     def _run_func_tool(self, func: Callable, *args, **kwargs) -> CallToolResultType:
         """Run a function tool with the given function and arguments.

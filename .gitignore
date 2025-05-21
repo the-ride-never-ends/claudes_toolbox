@@ -34,3 +34,6 @@ tools/functions/
 # test reports
 test_reports/
 utils/run_tool/test.json
+
+# deprecated
+deprecated/

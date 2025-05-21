@@ -142,6 +142,19 @@ class McpLogger:
             if exc_info:
                 error_message += f"\n{traceback.format_exc()}"
             self._print(self._format_message("EXCEPTION", error_message))
+    
+    def __call__(self, message: str) -> None:
+        """
+        Allows the logger to be called like a function.
+        This is primarily to prevent programming errors
+        where the logger is not called with a message.
+        """
+        self.warning(f"""
+        WARNING: McpLogger instance called instead of one of its methods.
+        You probably meant to call one of them, so you should change your code to do that!
+        message:\n{message}\n{traceback.format_exc()}
+        """)
+
 
 # Instantiate the logger singletons.
 logger = get_logger(__name__, log_file_name=f'{configs.PROJECT_NAME}.log', level=configs.log_level)

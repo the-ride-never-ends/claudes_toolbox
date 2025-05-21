@@ -36,50 +36,24 @@ fi
 
 # Check if the virtual environment already exists
 echo "Setting up the environment..."
-if [ -d "venv" ] || [ -d ".venv" ]; then
-    echo "Virtual environment already exists. Skipping creation."
-    if [ -d "venv" ]; then
-        venv_type="venv"
-    else
-        venv_type=".venv"
-    fi
+if [ -d "venv" ]; then
+    echo "Virtual environment already created with pip. Skipping creation."
+    venv_type="venv"
+elif [ -d ".venv" ]; then
+    echo "Virtual environment already created with uv. Skipping creation."
+    venv_type=".venv"
 else
     # Create a virtual environment if it doesn't exist.
     echo "Creating a virtual environment..."
-    read -p "Creating virtual environment. Choices 'uv' or 'pip': " venv_choice
-    if [ "$venv_choice" == "pip" ]; then
-        python3 -m venv venv
-        venv_type="venv"
-    else
-        uv venv --python 3.12
-        venv_type=".venv"
-    fi
+    uv venv --python 3.12
 fi
 
 # Install the virtual environment if requested.
 if [ ! -d ".venv" ] && [ ! -d "venv" ]; then
-
     read -p "Virtual environment not found. Would you like to create one? (y/n) " create_venv
-
     if [ "$create_venv" == "y" ] || [ "$create_venv" == "Y" ]; then
-
-        read -p "Creating virtual environment. Choices 'uv' or 'pip': " venv_choice
-
-        if [[ $venv_choice == "uv" ]]; then
-            echo "Creating virtual environment using uv..."
-            uv venv --python 3.12
-        else # default to pip
-            echo "Creating virtual environment using pip..."
-            python3 -m venv venv
-        fi
-
-        # Check if install.sh exists before executing it
-        if [ -f "install.sh" ]; then
-            bash "install.sh"
-            echo "Virtual environment created successfully."
-        else
-            echo "Warning: install.sh not found. Please create the virtual environment manually."
-        fi
+        echo "Creating virtual environment using uv..."
+        uv venv --python 3.12
     else
         echo "Skipping virtual environment creation..."
     fi
@@ -96,11 +70,7 @@ echo "Virtual environment activated."
 # Install required packages from requirements.txt
 if [[ -f "requirements.txt" ]]; then
     echo "Installing required packages..."
-    if [ "$venv_type" == "venv" ]; then
-        pip install -r requirements.txt
-    else
-        uv add -r requirements.txt
-    fi
+    uv add -r requirements.txt
 else
     echo "requirements.txt not found. Skipping package installation."
 fi

@@ -8,6 +8,7 @@ httpx # for async HTTP requests
 jinja2 # for templating
 mcp # for Claude tool server API
 multiformats # for CID creation
+ipfs-kit-py
 mypy # for type checking
 numpy # for numerical operations
 openai # for LLM api access from OpenAI

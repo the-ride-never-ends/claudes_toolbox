@@ -1,4 +1,4 @@
-# !/usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 An MCP server for serving CLI programs and utility functions to LLMs.
@@ -13,13 +13,12 @@ from mcp.server.fastmcp import FastMCP
 from mcp.types import CallToolResult, Prompt
 
 
-
 from configs import configs, Configs
 from logger import logger, mcp_logger
 from utils.install_tool_dependencies_to_shared_venv import install_tool_dependencies_to_shared_venv
-from utils.turn_argparse_help_into_docstring import turn_argparse_help_into_docstring
+from utils.common_.turn_argparse_help_into_docstring import turn_argparse_help_into_docstring
 from utils.run_tool import run_tool, return_results
-
+from utils.server.get_functions_tools_from_files import get_function_tools_from_files
 
 # Initialize FastMCP server
 mcp = FastMCP("claudes_toolbox")
@@ -204,7 +203,7 @@ class CliTools:
         self._total_tools: TotalTools = resources["total_tools"]
 
         self._cli_tool_paths = self._get_finished_cli_tool_paths()
-        self._verify_paths()
+        self._verify_cli_paths()
         self._register_cli_tools()
 
 
@@ -250,9 +249,9 @@ class CliTools:
                     mcp_logger.exception(f"Error registering tool '{method}': {e}")
                     continue
 
-    def _verify_paths(self) -> None:
-        """
-        Verify that the paths are correct.
+    def _verify_cli_paths(self) -> None:
+        """ 
+        Verify that the CLI paths are correct.
         """
         _verified_tools = []
         for tool in self._cli_tool_paths:
@@ -556,7 +555,7 @@ class CliTools:
         stdout = run_tool(cmd, "Codebase Search")
         return stdout
 
-from utils.get_functions_tools_from_files import get_function_tools_from_files
+
 
 @mcp.prompt() 
 def debug_mode() -> list[Prompt]: 
@@ -574,8 +573,11 @@ not attempt to use it again, report the error to the developer verbatim, then aw
             return none_prompt
     return [{ "role": "user", "content": f"This server is in {type_} mode: {tooltip} "}]
 
+# import threading
+# import time
 
 if __name__ == "__main__":
+
     # Load dependencies
     install_tool_dependencies_to_shared_venv(configs.REQUIREMENTS_FILE_PATHS)
 
@@ -593,6 +595,7 @@ if __name__ == "__main__":
 
     keyboard_interrupt = False
     try:
+        mcp_logger.info("Starting ClaudesToolbox MCP server...")
         mcp.run(transport="stdio")
     except KeyboardInterrupt:
         keyboard_interrupt = True

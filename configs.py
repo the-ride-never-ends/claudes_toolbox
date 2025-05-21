@@ -66,7 +66,7 @@ class Configs:
     @property
     def PROJECT_NAME(self) -> str:
         """The name of the project."""
-        return os.getenv("PROJECT_NAME", "your_project_name_here")
+        return os.getenv("PROJECT_NAME", "claudes_toolbox")
 
     @property
     def OPERATING_SYSTEM(self) -> str:

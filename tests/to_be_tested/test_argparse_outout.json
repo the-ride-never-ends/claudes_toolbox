@@ -1,0 +1,371 @@
+{"parser": {"description": "Template utilities command line interface",
+  "arguments": {"db_path": {"option_strings": ["--db-path"
+                ],
+    "dest": "db_path",
+    "default": "templates.db",
+    "required": false,
+    "type": "str",
+    "help": "Path to template database file (default: templates.db)",
+    "action": "_StoreAction"
+            },
+   "debug": {"option_strings": ["--debug"
+                ],
+    "dest": "debug",
+    "default": false,
+    "required": false,
+    "nargs": 0,
+    "const": true,
+    "help": "Enable debug logging",
+    "action": "_StoreTrueAction"
+            },
+   "command": {"help": "Command to run",
+    "subcommands": {"db": {"create": {"option_strings": ["--create"
+                            ],
+       "dest": "create",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Create database and tables if they don't exist",
+       "action": "_StoreTrueAction"
+                        },
+      "check": {"option_strings": ["--check"
+                            ],
+       "dest": "check",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Check if database exists and has proper schema",
+       "action": "_StoreTrueAction"
+                        },
+      "list": {"option_strings": ["--list"
+                            ],
+       "dest": "list",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "List all templates in the database",
+       "action": "_StoreTrueAction"
+                        },
+      "model_type": {"option_strings": ["--model-type"
+                            ],
+       "dest": "model_type",
+       "required": false,
+       "type": "str",
+       "help": "Filter templates by model type",
+       "action": "_StoreAction"
+                        },
+      "add_defaults": {"option_strings": ["--add-defaults"
+                            ],
+       "dest": "add_defaults",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Add default parent templates to the database",
+       "action": "_StoreTrueAction"
+                        }
+                    },
+     "template": {"get": {"option_strings": ["--get"
+                            ],
+       "dest": "get",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Get a template from the database",
+       "action": "_StoreTrueAction"
+                        },
+      "model_type": {"option_strings": ["--model-type"
+                            ],
+       "dest": "model_type",
+       "required": true,
+       "type": "str",
+       "help": "Model type to get template for",
+       "action": "_StoreAction"
+                        },
+      "template_type": {"option_strings": ["--template-type"
+                            ],
+       "dest": "template_type",
+       "required": true,
+       "type": "str",
+       "help": "Template type to get",
+       "action": "_StoreAction"
+                        },
+      "hardware_platform": {"option_strings": ["--hardware-platform"
+                            ],
+       "dest": "hardware_platform",
+       "required": false,
+       "type": "str",
+       "help": "Hardware platform to get template for",
+       "action": "_StoreAction"
+                        },
+      "output": {"option_strings": ["--output"
+                            ],
+       "dest": "output",
+       "required": false,
+       "type": "str",
+       "help": "Output file to write template to (if not specified, prints to stdout)",
+       "action": "_StoreAction"
+                        },
+      "store": {"option_strings": ["--store"
+                            ],
+       "dest": "store",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Store a template in the database",
+       "action": "_StoreTrueAction"
+                        },
+      "input": {"option_strings": ["--input"
+                            ],
+       "dest": "input",
+       "required": false,
+       "type": "str",
+       "help": "Input file containing template content to store",
+       "action": "_StoreAction"
+                        },
+      "parent": {"option_strings": ["--parent"
+                            ],
+       "dest": "parent",
+       "required": false,
+       "type": "str",
+       "help": "Parent template name",
+       "action": "_StoreAction"
+                        },
+      "modality": {"option_strings": ["--modality"
+                            ],
+       "dest": "modality",
+       "required": false,
+       "type": "str",
+       "help": "Template modality",
+       "action": "_StoreAction"
+                        },
+      "no_validate": {"option_strings": ["--no-validate"
+                            ],
+       "dest": "no_validate",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Skip validation when storing template",
+       "action": "_StoreTrueAction"
+                        }
+                    },
+     "validate": {"template": {"option_strings": ["--template"
+                            ],
+       "dest": "template",
+       "required": false,
+       "type": "str",
+       "help": "Path to template file to validate",
+       "action": "_StoreAction"
+                        },
+      "model_type": {"option_strings": ["--model-type"
+                            ],
+       "dest": "model_type",
+       "required": true,
+       "type": "str",
+       "help": "Model type the template is for",
+       "action": "_StoreAction"
+                        },
+      "template_type": {"option_strings": ["--template-type"
+                            ],
+       "dest": "template_type",
+       "required": true,
+       "type": "str",
+       "help": "Template type (test, benchmark, skill)",
+       "action": "_StoreAction"
+                        },
+      "hardware_platform": {"option_strings": ["--hardware-platform"
+                            ],
+       "dest": "hardware_platform",
+       "required": false,
+       "type": "str",
+       "help": "Hardware platform to validate for",
+       "action": "_StoreAction"
+                        },
+      "all": {"option_strings": ["--all"
+                            ],
+       "dest": "all",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Validate all templates in the database",
+       "action": "_StoreTrueAction"
+                        },
+      "output": {"option_strings": ["--output"
+                            ],
+       "dest": "output",
+       "required": false,
+       "type": "str",
+       "help": "Output file to write validation results to (if not specified, prints to stdout)",
+       "action": "_StoreAction"
+                        }
+                    },
+     "inheritance": {"update": {"option_strings": ["--update"
+                            ],
+       "dest": "update",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Update all templates in the database with inheritance information",
+       "action": "_StoreTrueAction"
+                        },
+      "get_parent": {"option_strings": ["--get-parent"
+                            ],
+       "dest": "get_parent",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Get parent template for a model type",
+       "action": "_StoreTrueAction"
+                        },
+      "model_type": {"option_strings": ["--model-type"
+                            ],
+       "dest": "model_type",
+       "required": false,
+       "type": "str",
+       "help": "Model type to get parent for",
+       "action": "_StoreAction"
+                        },
+      "get_hierarchy": {"option_strings": ["--get-hierarchy"
+                            ],
+       "dest": "get_hierarchy",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Get inheritance hierarchy for a model type",
+       "action": "_StoreTrueAction"
+                        }
+                    },
+     "placeholder": {"list_standard": {"option_strings": ["--list-standard"
+                            ],
+       "dest": "list_standard",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "List standard placeholders and their properties",
+       "action": "_StoreTrueAction"
+                        },
+      "extract": {"option_strings": ["--extract"
+                            ],
+       "dest": "extract",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Extract placeholders from a template",
+       "action": "_StoreTrueAction"
+                        },
+      "template": {"option_strings": ["--template"
+                            ],
+       "dest": "template",
+       "required": false,
+       "type": "str",
+       "help": "Path to template file to extract placeholders from",
+       "action": "_StoreAction"
+                        },
+      "context": {"option_strings": ["--context"
+                            ],
+       "dest": "context",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Generate default context for a model",
+       "action": "_StoreTrueAction"
+                        },
+      "model_name": {"option_strings": ["--model-name"
+                            ],
+       "dest": "model_name",
+       "required": false,
+       "type": "str",
+       "help": "Model name to generate context for",
+       "action": "_StoreAction"
+                        },
+      "hardware_platform": {"option_strings": ["--hardware-platform"
+                            ],
+       "dest": "hardware_platform",
+       "required": false,
+       "type": "str",
+       "help": "Hardware platform to use for context generation",
+       "action": "_StoreAction"
+                        },
+      "output": {"option_strings": ["--output"
+                            ],
+       "dest": "output",
+       "required": false,
+       "type": "str",
+       "help": "Output file to write context to (if not specified, prints to stdout)",
+       "action": "_StoreAction"
+                        },
+      "render": {"option_strings": ["--render"
+                            ],
+       "dest": "render",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Render a template with context",
+       "action": "_StoreTrueAction"
+                        },
+      "context_file": {"option_strings": ["--context-file"
+                            ],
+       "dest": "context_file",
+       "required": false,
+       "type": "str",
+       "help": "JSON file containing context for rendering",
+       "action": "_StoreAction"
+                        }
+                    },
+     "hardware": {"detect": {"option_strings": ["--detect"
+                            ],
+       "dest": "detect",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Detect available hardware platforms",
+       "action": "_StoreTrueAction"
+                        },
+      "validate": {"option_strings": ["--validate"
+                            ],
+       "dest": "validate",
+       "default": false,
+       "required": false,
+       "nargs": 0,
+       "const": true,
+       "help": "Validate hardware support in a template",
+       "action": "_StoreTrueAction"
+                        },
+      "template": {"option_strings": ["--template"
+                            ],
+       "dest": "template",
+       "required": false,
+       "type": "str",
+       "help": "Path to template file to validate hardware support for",
+       "action": "_StoreAction"
+                        },
+      "hardware_platform": {"option_strings": ["--hardware-platform"
+                            ],
+       "dest": "hardware_platform",
+       "required": false,
+       "type": "str",
+       "help": "Hardware platform to validate for",
+       "action": "_StoreAction"
+                        }
+                    }
+                },
+    "action": "_SubParsersAction"
+            }
+        }
+    }
+}
