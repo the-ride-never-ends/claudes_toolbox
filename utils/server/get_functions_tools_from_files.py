@@ -49,10 +49,6 @@ def get_function_tools_from_files(mcp: FastMCP) -> None:
                     # Load and register the function as a tool
                     func: Callable = getattr(module, name)
 
-                    # Monkey-patch in a response object.
-                    # This way, every function returns 
-                    #func = lambda *args, **kwargs: item(*args, **kwargs)
-
                     mcp.add_tool(func, name=tool_name, description=tool_desc)
                     mcp_logger.info(f"Registered tool: {tool_name}")
 

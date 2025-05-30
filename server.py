@@ -288,6 +288,20 @@ class CliTools:
                         cmd.append(value)
         return cmd
 
+    def _build_cli_command(self, tool_name: str, *args, **kwargs) -> list[str]:
+        """
+        Build the command for the CLI tool.
+        """
+        cmd = [tool_name]
+        cmd = self._add_parameters(cmd, **kwargs)
+        # Add positional arguments
+        for arg in args:
+            cmd.append(arg)
+        # Add keyword arguments
+        cmd = self._add_parameters(cmd, **kwargs)
+        return cmd
+
+
     def _get_tool_path(self, tool_name: str) -> Path:
         for tool in self._cli_tool_paths:
             if tool["dir"].name == tool_name:
@@ -590,8 +604,6 @@ if __name__ == "__main__":
         "return_results": return_results,
         "total_tools": TotalTools(),
     })
-
-    #get_cli_tools_from_files(mcp)
 
     keyboard_interrupt = False
     try:

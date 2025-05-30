@@ -1,0 +1,294 @@
+{
+    "class_name": "PDFProcessor",
+    "format_name": "PDF",
+    "class_docstring": "PDF processor framework.\n\nThis class provides functionality to extract text, metadata, and structure from PDF files.",
+    "type_vars": [
+        {
+            "name": "Document",
+            "description": "For type-hinting PDF documents"
+        }
+    ],
+    "imports": [
+        "re",
+        "io",
+        "logging",
+        "typing",
+        "PyPDF2",
+        "format_handlers.constants.Constants"
+    ],
+    "required_resources": [
+        {
+            "name": "_supported_formats",
+            "description": "set of supported file formats. See `format_handlers.constants.Constants`."
+        },
+        {
+            "name": "_processor_available",
+            "description": "Boolean indicating if the processor is available."
+        },
+        {
+            "name": "_processor_name",
+            "description": "Name of the processor."
+        },
+        {
+            "name": "_get_version",
+            "description": "Callable function to get version information."
+        },
+        {
+            "name": "_extract_structure",
+            "description": "Callable function to extract structure from PDF files."
+        },
+        {
+            "name": "_extract_text",
+            "description": "Callable function to extract text from PDF files."
+        },
+        {
+            "name": "_extract_metadata",
+            "description": "Callable function to extract metadata from PDF files."
+        },
+        {
+            "name": "_open_pdf_file",
+            "description": "Callable function to open PDF files."
+        }
+    ],
+    "resource_assignments": [
+        {
+            "attribute": "_supported_formats",
+            "type": "set[str]",
+            "key": "supported_formats"
+        },
+        {
+            "attribute": "_processor_available",
+            "type": "bool",
+            "key": "processor_available"
+        },
+        {
+            "attribute": "_processor_name",
+            "type": "str",
+            "key": "processor_name"
+        },
+        {
+            "attribute": "_get_version",
+            "type": "Callable",
+            "key": "get_version"
+        },
+        {
+            "attribute": "_extract_structure",
+            "type": "Callable",
+            "key": "extract_structure"
+        },
+        {
+            "attribute": "_extract_text",
+            "type": "Callable",
+            "key": "extract_text"
+        },
+        {
+            "attribute": "_extract_metadata",
+            "type": "Callable",
+            "key": "extract_metadata"
+        },
+        {
+            "attribute": "_open_pdf_file",
+            "type": "Callable",
+            "key": "open_pdf_file"
+        }
+    ],
+    "optional_resources": [
+        {
+            "attribute": "_extract_images",
+            "type": "Callable | MagicMock",
+            "key": "extract_images",
+            "description": "image extraction function"
+        }
+    ],
+    "example_output": "# example.pdf\n## Metadata\n- PDF Document: Annual Report 2023\n- Creator: Corporate Team\n- Subject: Financial Performance\n- Created: 2023-12-31T23:59:59\n- Total Pages: 45\n- Version: 1.7\n\n## Content\n### Page 1\n#### Text Content\nAnnual Report 2023\nExecutive Summary\nThis year marked significant growth...\n\n#### Images\n- Image: company_logo.png\n- Dimensions: 200x100 pixels\n- Summary: Corporate logo with blue and white design\n\n### Page 2\n#### Text Content\nFinancial Highlights\nRevenue: $2.5M\nProfit: $450K\n...",
+    "methods": [
+        {
+            "name": "can_process",
+            "docstring": "Check if this processor can handle the given format.",
+            "parameters": [
+                {
+                    "name": "format_name",
+                    "type": "str",
+                    "description": "The name of the format to check."
+                }
+            ],
+            "returns": {
+                "type": "bool",
+                "description": "True if this processor can handle the format and PyPDF2 is available, False otherwise."
+            },
+            "body": "return self._processor_available and format_name.lower() in self._supported_formats"
+        },
+        {
+            "name": "supported_formats",
+            "docstring": "Get the list of formats supported by this processor.",
+            "parameters": [],
+            "returns": {
+                "type": "list[str]",
+                "description": "A list of format names supported by this processor."
+            },
+            "body": "return self._supported_formats if self._processor_available else []",
+            "is_property": true
+        },
+        {
+            "name": "get_processor_info",
+            "docstring": "Get information about this processor.",
+            "parameters": [],
+            "returns": {
+                "type": "dict[str, Any]",
+                "description": "A dictionary containing information about this processor."
+            },
+            "body": "info = {\n    \"name\": self._processor_name,\n    \"supported_formats\": self._supported_formats,\n    \"available\": self._processor_available\n}\n\nif self._processor_available:\n    info[\"version\"] = self._get_version()\n\nreturn info"
+        },
+        {
+            "name": "open_pdf_file",
+            "docstring": "Open a PDF file and return the Document object.",
+            "parameters": [
+                {
+                    "name": "data",
+                    "type": "bytes",
+                    "description": "The binary data of the PDF document."
+                }
+            ],
+            "returns": {
+                "type": "'Document'",
+                "description": "A PyPDF2 Document object."
+            },
+            "raises": [
+                {
+                    "exception": "ValueError",
+                    "description": "If PyPDF2 is not available or the data cannot be processed as a PDF."
+                }
+            ],
+            "body": "try:\n    return self._open_pdf_file(data)\nexcept Exception as e:\n    logger.error(f\"Error opening PDF file: {e}\")\n    raise ValueError(f\"Error opening PDF file: {e}\")"
+        },
+        {
+            "name": "extract_text",
+            "docstring": "Extract plain text from a PDF document.",
+            "parameters": [
+                {
+                    "name": "data",
+                    "type": "bytes",
+                    "description": "The binary data of the PDF document."
+                },
+                {
+                    "name": "options",
+                    "type": "dict[str, Any]",
+                    "description": "Processing options.\n    max_pages: Maximum number of pages to extract (default: 100)\n    include_metadata: Whether to include metadata in text (default: False)"
+                }
+            ],
+            "returns": {
+                "type": "str",
+                "description": "Extracted text from the PDF document."
+            },
+            "raises": [
+                {
+                    "exception": "ValueError",
+                    "description": "If PyPDF2 is not available or the data cannot be processed as a PDF."
+                }
+            ],
+            "body": "try:\n    return self._extract_text(data, options)\nexcept Exception as e:\n    logger.error(f\"Error extracting text from PDF: {e}\")\n    raise ValueError(f\"Error extracting text from PDF: {e}\")"
+        },
+        {
+            "name": "extract_metadata",
+            "docstring": "Extract metadata from a PDF document.",
+            "parameters": [
+                {
+                    "name": "data",
+                    "type": "bytes",
+                    "description": "The binary data of the PDF document."
+                },
+                {
+                    "name": "options",
+                    "type": "dict[str, Any]",
+                    "description": "Processing options."
+                }
+            ],
+            "returns": {
+                "type": "dict[str, Any]",
+                "description": "Metadata extracted from the PDF document."
+            },
+            "raises": [
+                {
+                    "exception": "ValueError",
+                    "description": "If PyPDF2 is not available or the data cannot be processed as a PDF."
+                }
+            ],
+            "body": "try:\n    return self._extract_metadata(data, options)\nexcept Exception as e:\n    logger.error(f\"Error extracting metadata from PDF: {e}\")\n    raise ValueError(f\"Error extracting metadata from PDF: {e}\")"
+        },
+        {
+            "name": "extract_structure",
+            "docstring": "Extract structural elements from a PDF document.",
+            "parameters": [
+                {
+                    "name": "data",
+                    "type": "bytes",
+                    "description": "The binary data of the PDF document."
+                },
+                {
+                    "name": "options",
+                    "type": "dict[str, Any]",
+                    "description": "Processing options."
+                }
+            ],
+            "returns": {
+                "type": "list[dict[str, Any]]",
+                "description": "A list of structural elements extracted from the PDF document."
+            },
+            "raises": [
+                {
+                    "exception": "ValueError",
+                    "description": "If PyPDF2 is not available or the data cannot be processed as a PDF."
+                }
+            ],
+            "body": "try:\n    return self._extract_structure(data, options)\nexcept Exception as e:\n    logger.error(f\"Error extracting structure from PDF: {e}\")\n    raise ValueError(f\"Error extracting structure from PDF: {e}\")"
+        },
+        {
+            "name": "extract_images",
+            "docstring": "Extract images from a PDF document.",
+            "parameters": [
+                {
+                    "name": "data",
+                    "type": "bytes",
+                    "description": "The binary data of the PDF document."
+                },
+                {
+                    "name": "options",
+                    "type": "dict[str, Any]",
+                    "description": "Processing options."
+                }
+            ],
+            "returns": {
+                "type": "list[dict[str, Any]]",
+                "description": "A list of dictionaries containing image information.\n    - name: The name of the image.\n    - page: The page number where the image is located.\n    - dimensions: The dimensions of the image (width x height) in pixels.\n    - summary: A brief summary of the image content.\n    - format: The image format (PNG, JPEG, etc.)."
+            },
+            "body": "try:\n    return self._extract_images(data, options)\nexcept Exception as e:\n    logger.error(f\"Error extracting images from PDF: {e}\")\n    raise ValueError(f\"Error extracting images from PDF: {e}\")"
+        },
+        {
+            "name": "process",
+            "docstring": "Process a PDF document completely, extracting text, metadata, and structure.",
+            "parameters": [
+                {
+                    "name": "data",
+                    "type": "bytes",
+                    "description": "The binary data of the PDF document."
+                },
+                {
+                    "name": "options",
+                    "type": "dict[str, Any]",
+                    "description": "Processing options."
+                }
+            ],
+            "returns": {
+                "type": "tuple[str, dict[str, Any], list[dict[str, Any]]]",
+                "description": "A tuple of (text content, metadata, sections)."
+            },
+            "raises": [
+                {
+                    "exception": "ValueError",
+                    "description": "If PyPDF2 is not available or the data cannot be processed as a PDF."
+                }
+            ],
+            "body": "try:\n    # Open the PDF file\n    doc = self.open_pdf_file(data)\n\n    # Extract text, metadata, and structure\n    metadata: dict[str, Any] = self.extract_metadata(doc, options)\n    text = self.extract_text(doc, options)\n    sections: list[dict[str, Any]] = self.extract_structure(doc, options)\n\n    images = None\n    if not isinstance(self._extract_images, MagicMock):\n        images = self.extract_images(doc, options)\n\n    # Create a human-readable text version\n    text_content = [f\"PDF Document: {metadata.get('title', 'Untitled')}\"]\n    \n    if \"creator\" in metadata:\n        text_content.append(f\"Creator: {metadata['creator']}\")\n    \n    if \"subject\" in metadata:\n        text_content.append(f\"Subject: {metadata['subject']}\")\n    \n    if \"creation_date\" in metadata:\n        text_content.append(f\"Created: {metadata['creation_date']}\")\n    \n    if \"page_count\" in metadata:\n        text_content.append(f\"Total Pages: {metadata['page_count']}\")\n    \n    if \"version\" in metadata:\n        text_content.append(f\"PDF Version: {metadata['version']}\")\n    \n    text_content.append(\"\\n## Content\\n\")\n    text_content.append(text)\n    \n    if images:\n        text_content.append(\"\\n## Images\\n\")\n        for img in images:\n            text_content.append(f\"Image: {img['name']}\")\n            text_content.append(f\"Page: {img['page']}\")\n            text_content.append(f\"Dimensions: {img['dimensions']} pixels\")\n            text_content.append(f\"Format: {img['format']}\")\n            text_content.append(f\"Summary: {img['summary']}\")\n\n    return \"\\n\".join(text_content), metadata, sections\n\nexcept Exception as e:\n    logger.error(f\"Error processing PDF document: {e}\")\n    raise ValueError(f\"Error processing PDF document: {e}\")"
+        }
+    ]
+}

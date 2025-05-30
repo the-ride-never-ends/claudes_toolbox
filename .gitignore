@@ -15,7 +15,7 @@ wheels/
 configs.yaml
 
 # Data files
-data/
+/data/
 !data/_data_goes_here.txt
 
 *.md
@@ -25,11 +25,17 @@ uv.lock
 .python-version
 
 *.log
-# Import the tool folders, but not the tools themselves
-tools/cli/
-!tools/cli/__init__.py
-tools/functions/
+# Import the tool folders, but not the tools themselves EXCEPT for the meta-tools
+# list_tools_in_cli_dir.py, list_tools_in_functions_dir.py, use_function_as_tool.py and use_cli_program_as_tool.py
+/tools/cli/**
+!/tools/cli/__init__.py
+/tools/functions/**
 !tools/functions/__init__.py
+!tools/functions/list_tools_in_cli_dir.py
+!tools/functions/list_tools_in_functions_dir.py
+!tools/functions/use_function_as_tool.py
+!tools/functions/use_cli_program_as_tool.py
+
 
 # test reports
 test_reports/
