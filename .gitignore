@@ -18,8 +18,19 @@ configs.yaml
 /data/
 !data/_data_goes_here.txt
 
-*.md
+
+# Documentation for CLI and non-meta function tools
+/*.md
 !README.md
+
+/docs/tools/**
+!/docs/tools/functions/
+!/docs/tools/cli/
+!/docs/tools/functions/use_function_as_tool.md
+!/docs/tools/functions/use_cli_program_as_tool.md
+!/docs/tools/functions/list_tools_in_cli_dir.md
+!/docs/tools/functions/list_tools_in_functions_dir.md
+
 
 uv.lock
 .python-version
@@ -35,7 +46,6 @@ uv.lock
 !tools/functions/list_tools_in_functions_dir.py
 !tools/functions/use_function_as_tool.py
 !tools/functions/use_cli_program_as_tool.py
-
 
 # test reports
 test_reports/
