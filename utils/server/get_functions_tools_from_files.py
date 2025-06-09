@@ -24,13 +24,16 @@ def get_function_tools_from_files(mcp: FastMCP) -> None:
     for file in tool_files:
         module_name = file.stem
         try:
+            # Skip files that start with an underscore
+            if module_name.startswith("_"):
+                continue
             # Import the module using its relative path
             module = importlib.import_module(f"tools.functions.{module_name}")
 
             # Find all functions in the module that don't start with underscore
             for name in dir(module):
                 item = getattr(module, name)
-                #mcp_logger.debug(f"Checking item '{name}' in module '{module_name}'")
+                mcp_logger.debug(f"Checking item '{name}' in module '{module_name}'")
 
                 # Skip imports.
                 # We check this by making the name of the file the same as the function name

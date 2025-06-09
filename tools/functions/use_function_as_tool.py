@@ -4,6 +4,7 @@ Use a function in this folder as an MCP tool.
 Hacky way to get around MCP's 129 tool limit.
 """
 from typing import Any, Callable
+import importlib
 
 def _call_function_and_return_results(
     function_name: str,
@@ -75,7 +76,6 @@ def use_function_as_tool(
         AttributeError: If the function isn't in the module or isn't callable.
         ValueError: If there is an error calling the function.
     """
-    import importlib
     _verify_tool_call(function_name, functions_docstring)
 
     try:

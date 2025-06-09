@@ -24,7 +24,7 @@ class _RunTool:
     def __init__(self, configs: Configs = None, resources: dict[str, Callable] = None) -> None:
         self.configs = configs
         self.resources = resources
-        self.timeout: int = self.configs.tool_timeout or 60
+        self.timeout: int = self.configs.tool_timeout
 
         self._return_tool_call_results: Callable = self.resources['return_tool_call_results']
         self._return_text_content: Callable = self.resources['return_text_content']

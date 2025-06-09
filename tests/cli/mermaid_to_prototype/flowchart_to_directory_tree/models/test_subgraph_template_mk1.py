@@ -13,7 +13,7 @@ import os
 try:
     from dataclasses import dataclass, field
     from typing import List, Optional
-    from .node import Node
+    #from .node import Node
 except ImportError as e:
     raise ImportError(f"Failed to import necessary modules: {e}")
 # Test classes
