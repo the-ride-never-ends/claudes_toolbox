@@ -35,6 +35,7 @@ def _verify_tool_call(
     """
     Verify that the function exists in the tools directory and that its docstring matches the provided docstring.
         This is to make sure the LLM didn't hallucinate the function or its docstring.
+        # TODO There's probably a more elegant way to do this. Figure one out.
     """
     from tools.functions.list_tools_in_functions_dir import list_tools_in_functions_dir
     tools = list_tools_in_functions_dir(get_docstring=True)

@@ -4,6 +4,8 @@ import sys
 import unittest
 from unittest.mock import patch, mock_open, MagicMock
 
+from configs import configs as real_configs
+
 # Create mock modules for imports in the original code
 sys.modules['configs'] = MagicMock()
 sys.modules['logger'] = MagicMock()
@@ -12,10 +14,8 @@ sys.modules['logger'] = MagicMock()
 from configs import configs
 from logger import logger
 
-# Append the root directory to sys.path for module imports
-sys.path.append(configs.ROOT_DIR.resolve())
 
-# Import the module under test
+sys.path.insert(0, str(real_configs.ROOT_DIR.resolve()))
 from utils.readme.update_readme_when_settings_are_changed import (
     _format_config_json,
     _update,
@@ -431,5 +431,5 @@ class TestUpdateReadmeWhenSettingsAreChanged(unittest.TestCase):
         self.write_file.assert_called_once()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -121,7 +121,7 @@
 
 - [__init__.py](__init__.md): last updated 02:46 AM on May 30, 2025
 - [_check_if_target_dir_exists.py](_check_if_target_dir_exists.md): last updated 02:46 AM on May 30, 2025
-- [_except_for_the_files_in_these_dirs.py](_except_for_the_files_in_these_dirs.md): last updated 02:46 AM on May 30, 2025
+- [_exclude_these_directories.py](_exclude_these_directories.md): last updated 02:46 AM on May 30, 2025
 - [_generate_test_content.py](_generate_test_content.md): last updated 02:46 AM on May 30, 2025
 - [_generate_test_file_path.py](_generate_test_file_path.md): last updated 02:46 AM on May 30, 2025
 - [_get_all_python_files_in.py](_get_all_python_files_in.md): last updated 02:46 AM on May 30, 2025

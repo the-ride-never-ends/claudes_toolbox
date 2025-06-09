@@ -134,7 +134,7 @@ class ClaudesToolboxServer:
                 self._mcp_print(f"'{tool_name}' did not return a help message. Skipping.")
                 continue
             # Convert the help message to a docstring
-            description = self._turn_argparse_help_into_docstring(help_message)
+            #description = self._turn_argparse_help_into_docstring(help_message)
         raise FileNotFoundError(f"Could not find any tools.")
 
 
@@ -572,7 +572,7 @@ class CliTools:
 
 
 @mcp.prompt() 
-def debug_mode() -> list[Prompt]: 
+def debug_mode() -> list[Prompt]: # TODO debug_mode currently does not work. Figure out why.
     log_level = configs.log_level
     none_prompt = [{"role": "user", "content": ""}] # Equivalent to returning None, hopefully.
     match log_level:
@@ -607,7 +607,7 @@ if __name__ == "__main__":
 
     keyboard_interrupt = False
     try:
-        mcp_logger.info("Starting ClaudesToolbox MCP server...")
+        mcp_logger.info("Claude's Toolbox MCP server started")
         mcp.run(transport="stdio")
     except KeyboardInterrupt:
         keyboard_interrupt = True

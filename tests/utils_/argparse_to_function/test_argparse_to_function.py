@@ -94,5 +94,5 @@ class TestArgparseEdgeCases(unittest.TestCase):
         output = generate_function_signature_and_doc(structure)
         self.assertIn("mode: str = None", output)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

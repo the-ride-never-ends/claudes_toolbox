@@ -8,9 +8,15 @@ def list_tools_in_functions_dir(get_docstring: bool = True) -> list[dict[str, st
     Returns:
         list[dict[str, str]]: List of dictionaries containing Python filenames (without .py extension).
             If `get_docstring` is True, each dictionary will also contain the tool's docstring.
+
+    Raises:
+        ValueError: If get_docstring is not a boolean.
     """
     from pathlib import Path
     import ast
+
+    if not isinstance(get_docstring, bool):
+        raise ValueError(f"get_docstring must be a boolean value, not {type(get_docstring)}.")
 
     this_dir = Path(__file__).parent
     python_files = []

@@ -157,7 +157,7 @@ def list_tools_in_cli_dir(get_help_menu: bool = True) -> list[dict[str, str]]:
                 program_name = entry_point["path"].parent.stem
                 run_as_module = True
                 break
-        # Then check for a file with "if __name__ == '__main__':" block
+        # Then check for a file with "if __name__ == "__main__":" block
         if target_path is None:
             for entry_point in entry_point_candidates:
                 if entry_point["is_entry"]:
@@ -179,6 +179,7 @@ def list_tools_in_cli_dir(get_help_menu: bool = True) -> list[dict[str, str]]:
         try:
             name, help_menu = _get_name_and_help_menu(target_path, run_as_module=run_as_module)
         except Exception as e:
+            # If we can't get the help menu, it's probably not a valid tool either.
             logger.error(f"Error getting name and help menu for {target_path}: {e}")
             name = target_path.stem
 
@@ -191,43 +192,3 @@ def list_tools_in_cli_dir(get_help_menu: bool = True) -> list[dict[str, str]]:
     if not python_files:
         return [] # Sort by name for consistent ordering
     return sorted(python_files, key=lambda x: x['name'])
-
-
-# def _get_name_and_help_menu(
-#     file: Path,
-#     run_as_module: bool = False,
-#     timeout: int = 10 # seconds
-#     ) -> tuple[str, str]:
-#     import subprocess
-#     cmd_list = []
-#     result = None
-
-#     venv_python = Path.cwd() / '.venv/bin/python'
-#     python_cmd = str(venv_python.resolve()) if venv_python.is_file() else 'python'
-#     cmd_list.append(python_cmd)
-
-#     if run_as_module:
-#         python_cmd += f' -m '
-#         file_name = file.stem
-#     else:
-#         file_name = str(file.resolve())
-#     cmd_list.append(file_name)
-#     cmd_list.append('--help')
-
-#     try:
-#         result = subprocess.run(
-#             cmd_list,
-#             capture_output=True,
-#             text=True,
-#             check=True,
-#             timeout=timeout
-#         )
-#         help_menu = result.stdout.strip()
-#         return _get_program_name_from(help_menu), help_menu
-#     except subprocess.CalledProcessError as e:
-#         raise Exception(f"Error running {file.name} with --help: {e.stderr.strip()}")
-#     except Exception as e:
-#         raise Exception(f"A {type(e).__name__} occurred while getting help menu for {file.name}: {e}") from e
-#     finally:
-#         if result is not None:  # Only log if result exists
-#             logger.debug(f"Command results: {result}")

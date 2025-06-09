@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import patch, mock_open
 
 
-from tools.cli.todo_finder.todo_finder import (
+from tools.cli.todo_finder.main import (
     find_todos_in_file,
     walk_directory,
     append_to_todo_file,
@@ -401,5 +401,5 @@ class TestMain(unittest.TestCase):
         self.assertEqual(mock_append.call_args[0][1], 'TODO.md')
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

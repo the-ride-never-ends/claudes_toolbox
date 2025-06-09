@@ -1,7 +1,9 @@
 import asyncio
+import importlib
 import os
 import shlex
 import subprocess as sub
+import sys
 import traceback
 from typing import Any, Callable
 
@@ -11,6 +13,10 @@ from configs import configs, Configs
 from logger import mcp_logger
 from utils.run_tool._return_text_content import return_text_content
 from utils.run_tool._return_tool_call_results import return_tool_call_results, CallToolResultType
+
+
+# Add the tools directory to the system path so we can reload tools dynamically.
+sys.path.insert(0, (configs.ROOT_DIR / 'tools' / 'functions').resolve())
 
 
 class _RunTool:
@@ -24,6 +30,16 @@ class _RunTool:
         self._return_text_content: Callable = self.resources['return_text_content']
         self._logger: Callable = self.resources['logger']
     
+    @staticmethod
+    def _reload_tool(func: Callable) -> None:
+        """
+        Reload a tool module before running it.
+        This allows for dynamic updates to the tool without restarting the application.
+        """
+        # Reload the module to ensure we have the latest version
+        module_name = func.__module__
+        if module_name in sys.modules:
+            importlib.reload(sys.modules[module_name])
 
     def _run_func_tool(self, func: Callable, *args, **kwargs) -> CallToolResultType:
         """Run a function tool with the given function and arguments.
@@ -39,6 +55,8 @@ class _RunTool:
             The result of the function execution wrapped in a CallToolResultType.
         """
         try:
+            # Reload the tool module to ensure we have the latest version
+            self._reload_tool(func)
             if asyncio.iscoroutinefunction(func):
                 loop = asyncio.get_event_loop()
                 if loop.is_running():

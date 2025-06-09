@@ -20,3 +20,7 @@ tiktoken # for tokenization
 tqdm # for progress bars
 elasticsearch # for search and indexing
 # redis # for caching and message brokering
+google-api-python-client 
+google-auth-httplib2 
+google-auth-oauthlib
+playsound3
