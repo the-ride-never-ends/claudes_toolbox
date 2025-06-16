@@ -4,6 +4,7 @@ from typing import Callable
 
 
 from mcp.server.fastmcp import FastMCP
+from pydantic import ValidationError
 
 
 from logger import logger, mcp_logger
@@ -33,7 +34,7 @@ def get_function_tools_from_files(mcp: FastMCP) -> None:
             # Find all functions in the module that don't start with underscore
             for name in dir(module):
                 item = getattr(module, name)
-                mcp_logger.debug(f"Checking item '{name}' in module '{module_name}'")
+                #mcp_logger.debug(f"Checking item '{name}' in module '{module_name}'")
 
                 # Skip imports.
                 # We check this by making the name of the file the same as the function name
@@ -57,5 +58,8 @@ def get_function_tools_from_files(mcp: FastMCP) -> None:
 
         except ImportError as e:
             mcp_logger.error(f"Error importing module {module_name}: {e}")
+        except ValidationError as e:
+            mcp_logger.error(f"Validation error for tool {module_name}: {e}")
         except Exception as e:
-            mcp_logger.error(f"Error loading tool from {file}: {e}")
+            import traceback
+            mcp_logger.error(f"Unexpected error loading tool from {file}: {e}\n{traceback.format_exc()}")

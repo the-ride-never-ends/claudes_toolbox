@@ -1,5 +1,6 @@
 import importlib
 from pathlib import Path
+from logger import mcp_logger
 
 
 def register_files_in_functions_dir():
@@ -14,9 +15,14 @@ def register_files_in_functions_dir():
             module_name = file.stem
             module_path = f"tools.functions.{module_name}"
             # Register the module in the global namespace
-            globals()[module_name] = importlib.import_module(module_path)
-            modules.append(module_name)
-    return modules
+            try:
+                globals()[module_name] = importlib.import_module(module_path)
+            except Exception as e:
+                mcp_logger.exception(f"Failed to import module {module_name}: {e}")
+                continue
+            else:
+                modules.append(module_name)
+    return sorted(modules)
 
 modules_names = register_files_in_functions_dir()
 

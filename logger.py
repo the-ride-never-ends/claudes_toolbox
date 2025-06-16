@@ -4,14 +4,11 @@ from logging.handlers import RotatingFileHandler
 import os
 import traceback
 import sys
-from typing import Callable
+from typing import Any, Callable
 
 
 from configs import configs, Configs
 
-# mcp_print.py
-import sys
-from typing import Any
 
 # TODO Figure out why this throws import errors when it's imported during unit tests.
 # from utils.mcp_print import mcp_print

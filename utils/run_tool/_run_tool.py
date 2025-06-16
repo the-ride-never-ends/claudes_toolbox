@@ -68,7 +68,15 @@ class _RunTool:
                     result = asyncio.run(func(*args, **kwargs))
             else:
                 result = func(*args, **kwargs)
-            return self.result(f"\n'{func.__qualname__}' output: {result}")
+
+            result_string = f"\n'{func.__qualname__}' output: {result}"
+
+            # Truncate the output string to 19,000 if it exceeds 20,000 characters
+            if len(result_string) >= 20000:
+                result_string = f"\nTruncated '{func.__qualname__}' output (first 19,000 characters): {result[:19000]}..."
+
+            return self.result(result_string)
+
         except Exception as e:
             mcp_logger.exception(f"Exception occurred while running function tool '{func.__name__}': {e}")
             return self.result(e)
@@ -87,19 +95,19 @@ class _RunTool:
         if self.configs.log_level == 10:
             mcp_logger.debug(f"Tool call result: {result}")
 
-        error = False
+        error = True # Assume error by default.
+        msg = ""
         match result:
             case sub.CalledProcessError():
-                error = True
                 msg = f"CalledProcessError: {result.returncode}\nCommand: {result.cmd}\nOutput: {result.output}\nError: {result.stderr}"
             case Exception():
-                error = True
                 msg = f"Error: {type(result).__name__}: {str(result)}"
             case str():
+                error = False
                 msg = "Success"
             case _:
                 # Handle any other result type
-                error = True # Default to error, since we shouldn't get unexpected types.
+                # Defaults to error, since we shouldn't get unexpected types.
                 msg = f"Unexpected Result: {type(result).__name__}"
 
         content = self._return_text_content(result, msg)
