@@ -16,8 +16,8 @@ from typing import Dict, List, Any, Optional
 try:
     sys.path.insert(0, '/home/kylerose1946/claudes_toolbox/claudes_toolbox/tools/cli/mermaid_to_prototype')
     sys.path.insert(0, '/home/kylerose1946/claudes_toolbox/claudes_toolbox/tools/cli/mermaid_to_prototype/class_diagram_to_python_files')
-    import tools.cli.mermaid_to_prototype.class_diagram_to_python_files.factory as factory
-    from tools.cli.mermaid_to_prototype.class_diagram_to_python_files.class_diagram_to_python_files import ClassDiagramToPythonFiles
+    import tools.cli.mermaid_to_prototype.class_diagram_to_python_files.make_class_diagram_to_python_files_factory as make_class_diagram_to_python_files_factory
+    from tools.cli.mermaid_to_prototype.class_diagram_to_python_files._class_diagram_to_python_files import ClassDiagramToPythonFiles
 except ImportError as e:
     raise ImportError(f"Failed to import necessary modules: {e}")
 
@@ -101,7 +101,7 @@ class TestMakeClassDiagramToPythonFiles(unittest.TestCase):
         mock_file_writer.return_value = self.mock_file_writer
         
         # Test execution
-        result = factory.make_class_diagram_to_python_files()
+        result = make_class_diagram_to_python_files_factory.make_class_diagram_to_python_files()
         
         # Verify return type
         self.assertIsInstance(result, ClassDiagramToPythonFiles)
@@ -145,7 +145,7 @@ class TestMakeClassDiagramToPythonFiles(unittest.TestCase):
         mock_factory.return_value = mock_instance
         
         # Test execution
-        result = factory.get_default_instance()
+        result = make_class_diagram_to_python_files_factory.get_default_instance()
         
         # Verify delegation
         mock_factory.assert_called_once()

@@ -15,7 +15,7 @@ from typing import Dict, List, Any, Optional
 # Import modules under test
 try:
     sys.path.insert(0, '/home/kylerose1946/claudes_toolbox/claudes_toolbox/tools/cli/mermaid_to_prototype/class_diagram_to_python_files')
-    import tools.cli.mermaid_to_prototype.class_diagram_to_python_files.mermaid_parser as mermaid_parser
+    import tools.cli.mermaid_to_prototype.class_diagram_to_python_files._mermaid_parser as _mermaid_parser
 except ImportError as e:
     raise ImportError(f"Failed to import necessary modules: {e}")
 
@@ -81,7 +81,7 @@ class TestParseClassDiagram(unittest.TestCase):
         - Visibility modifiers should be parsed correctly
         """
         # Test execution
-        result = mermaid_parser.parse_class_diagram(self.basic_diagram)
+        result = _mermaid_parser.parse_class_diagram(self.basic_diagram)
         
         # Verify structure
         self.assertIsInstance(result, dict)
@@ -116,17 +116,17 @@ class TestParseClassDiagram(unittest.TestCase):
         """
         # Test None content
         with self.assertRaises(ValueError) as context:
-            mermaid_parser.parse_class_diagram(None)
+            _mermaid_parser.parse_class_diagram(None)
         self.assertIn("Content cannot be empty", str(context.exception))
         
         # Test empty string
         with self.assertRaises(ValueError) as context:
-            mermaid_parser.parse_class_diagram("")
+            _mermaid_parser.parse_class_diagram("")
         self.assertIn("Content cannot be empty", str(context.exception))
         
         # Test whitespace only
         with self.assertRaises(ValueError) as context:
-            mermaid_parser.parse_class_diagram("   \n\t  ")
+            _mermaid_parser.parse_class_diagram("   \n\t  ")
         self.assertIn("Content cannot be empty", str(context.exception))
 
     def test_parse_class_diagram_with_relationships(self):
@@ -146,7 +146,7 @@ class TestParseClassDiagram(unittest.TestCase):
         - Should capture relationship labels
         """
         # Test execution
-        result = mermaid_parser.parse_class_diagram(self.complex_diagram)
+        result = _mermaid_parser.parse_class_diagram(self.complex_diagram)
         
         # Verify relationships
         relationships = result['relationships']
@@ -185,7 +185,7 @@ class TestParseClassDiagram(unittest.TestCase):
         """
         
         # Test execution
-        result = mermaid_parser.parse_class_diagram(diagram_with_comments)
+        result = _mermaid_parser.parse_class_diagram(diagram_with_comments)
         
         # Verify parsing succeeded despite comments
         self.assertIsInstance(result, dict)
@@ -240,7 +240,7 @@ class TestValidateSyntax(unittest.TestCase):
         
         for diagram in valid_diagrams:
             with self.subTest(diagram=diagram[:50]):
-                result = mermaid_parser.validate_syntax(diagram)
+                result = _mermaid_parser.validate_syntax(diagram)
                 self.assertTrue(result)
 
     def test_validate_syntax_invalid_diagram(self):
@@ -268,7 +268,7 @@ class TestValidateSyntax(unittest.TestCase):
         
         for diagram in invalid_diagrams:
             with self.subTest(diagram=diagram[:50]):
-                result = mermaid_parser.validate_syntax(diagram)
+                result = _mermaid_parser.validate_syntax(diagram)
                 self.assertFalse(result)
 
 

@@ -455,21 +455,21 @@ class CliTools:
         stdout = run_tool(cmd, "Codebase Search")
         return stdout
 
-@mcp.prompt()
-def debug_mode() -> list[Prompt]: # TODO debug_mode currently does not work. Figure out why.
-    log_level = configs.log_level
-    none_prompt = [{"role": "user", "content": ""}] # Equivalent to returning None, hopefully.
-    match log_level:
-        case 10:
-            type_, tooltip = "DEBUG", """
-Tools may not be available or work as expected. If a tool returns an error, you do
-not attempt to use it again, report the error to the developer verbatim, then await further instructions.
-"""
-        case 20 | 30 | 40 | 50:
-            return none_prompt
-        case _: 
-            return none_prompt
-    return [{ "role": "user", "content": f"This server is in {type_} mode: {tooltip} "}]
+# @mcp.prompt()
+# def debug_mode() -> list[Prompt]: # TODO debug_mode currently does not work. Figure out why.
+#     log_level = configs.log_level
+#     none_prompt = [{"role": "user", "content": ""}] # Equivalent to returning None, hopefully.
+#     match log_level:
+#         case 10:
+#             type_, tooltip = "DEBUG", """
+# Tools may not be available or work as expected. If a tool returns an error, you do
+# not attempt to use it again, report the error to the developer verbatim, then await further instructions.
+# """
+#         case 20 | 30 | 40 | 50:
+#             return none_prompt
+#         case _: 
+#             return none_prompt
+#     return [{ "role": "user", "content": f"This server is in {type_} mode: {tooltip} "}]
 
 # import threading
 # import time

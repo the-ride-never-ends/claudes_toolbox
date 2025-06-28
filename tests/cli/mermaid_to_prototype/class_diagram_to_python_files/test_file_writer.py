@@ -16,7 +16,7 @@ from typing import Dict, List, Any, Optional
 # Import modules under test
 try:
     sys.path.insert(0, '/home/kylerose1946/claudes_toolbox/claudes_toolbox/tools/cli/mermaid_to_prototype/class_diagram_to_python_files')
-    import tools.cli.mermaid_to_prototype.class_diagram_to_python_files.file_writer as file_writer
+    import tools.cli.mermaid_to_prototype.class_diagram_to_python_files._file_writer as _file_writer
 except ImportError as e:
     raise ImportError(f"Failed to import necessary modules: {e}")
 
@@ -69,7 +69,7 @@ class TestWritePythonFile(unittest.TestCase):
         - Should use UTF-8 encoding
         """
         # Test execution
-        file_writer.write_python_file(self.test_file, self.test_content)
+        _file_writer.write_python_file(self.test_file, self.test_content)
         
         # Verify file creation
         self.assertTrue(os.path.exists(self.test_file))
@@ -94,11 +94,11 @@ class TestWritePythonFile(unittest.TestCase):
         - Error message should indicate path cannot be empty
         """
         with self.assertRaises(ValueError) as context:
-            file_writer.write_python_file("", self.test_content)
+            _file_writer.write_python_file("", self.test_content)
         self.assertIn("File path cannot be empty", str(context.exception))
         
         with self.assertRaises(ValueError) as context:
-            file_writer.write_python_file(None, self.test_content)
+            _file_writer.write_python_file(None, self.test_content)
         self.assertIn("File path cannot be empty", str(context.exception))
 
     def test_write_python_file_empty_content(self):
@@ -116,11 +116,11 @@ class TestWritePythonFile(unittest.TestCase):
         - Error message should indicate content cannot be empty
         """
         with self.assertRaises(ValueError) as context:
-            file_writer.write_python_file(self.test_file, "")
+            _file_writer.write_python_file(self.test_file, "")
         self.assertIn("Content cannot be empty", str(context.exception))
         
         with self.assertRaises(ValueError) as context:
-            file_writer.write_python_file(self.test_file, None)
+            _file_writer.write_python_file(self.test_file, None)
         self.assertIn("Content cannot be empty", str(context.exception))
 
     def test_write_python_file_overwrite_existing(self):
@@ -140,15 +140,15 @@ class TestWritePythonFile(unittest.TestCase):
         """
         # Create initial file
         initial_content = "# Initial content"
-        file_writer.write_python_file(self.test_file, initial_content)
+        _file_writer.write_python_file(self.test_file, initial_content)
         
         # Test without overwrite (should fail)
         with self.assertRaises(FileExistsError) as context:
-            file_writer.write_python_file(self.test_file, self.test_content, overwrite=False)
+            _file_writer.write_python_file(self.test_file, self.test_content, overwrite=False)
         self.assertIn("File already exists", str(context.exception))
         
         # Test with overwrite (should succeed)
-        file_writer.write_python_file(self.test_file, self.test_content, overwrite=True)
+        _file_writer.write_python_file(self.test_file, self.test_content, overwrite=True)
         
         # Verify content was overwritten
         with open(self.test_file, 'r', encoding='utf-8') as f:
@@ -201,7 +201,7 @@ class TestEnsureDirectoryExists(unittest.TestCase):
         self.assertFalse(os.path.exists(new_dir))
         
         # Test execution
-        file_writer.ensure_directory_exists(new_dir)
+        _file_writer.ensure_directory_exists(new_dir)
         
         # Verify directory was created
         self.assertTrue(os.path.exists(new_dir))
@@ -222,7 +222,7 @@ class TestEnsureDirectoryExists(unittest.TestCase):
         - Should create parent directories as needed
         """
         # Test execution
-        file_writer.ensure_directory_exists(self.nested_dir)
+        _file_writer.ensure_directory_exists(self.nested_dir)
         
         # Verify nested structure was created
         self.assertTrue(os.path.exists(self.nested_dir))
@@ -267,7 +267,7 @@ class TestValidatePythonSyntax(unittest.TestCase):
         
         for code in valid_codes:
             with self.subTest(code=code[:30]):
-                result = file_writer.validate_python_syntax(code)
+                result = _file_writer.validate_python_syntax(code)
                 self.assertTrue(result)
 
     def test_validate_python_syntax_invalid_code(self):
@@ -293,7 +293,7 @@ class TestValidatePythonSyntax(unittest.TestCase):
         
         for code in invalid_codes:
             with self.subTest(code=code[:30]):
-                result = file_writer.validate_python_syntax(code)
+                result = _file_writer.validate_python_syntax(code)
                 self.assertFalse(result)
 
 
@@ -332,14 +332,14 @@ class TestFileUtilityFunctions(unittest.TestCase):
         - Should return False for directories
         """
         # Test existing file
-        self.assertTrue(file_writer.file_exists(self.test_file))
+        self.assertTrue(_file_writer.file_exists(self.test_file))
         
         # Test non-existing file
         non_existing = os.path.join(self.test_dir, "nonexistent.py")
-        self.assertFalse(file_writer.file_exists(non_existing))
+        self.assertFalse(_file_writer.file_exists(non_existing))
         
         # Test directory (should return False)
-        self.assertFalse(file_writer.file_exists(self.test_dir))
+        self.assertFalse(_file_writer.file_exists(self.test_dir))
 
     def test_directory_exists(self):
         """
@@ -357,14 +357,14 @@ class TestFileUtilityFunctions(unittest.TestCase):
         - Should return False for files
         """
         # Test existing directory
-        self.assertTrue(file_writer.directory_exists(self.test_dir))
+        self.assertTrue(_file_writer.directory_exists(self.test_dir))
         
         # Test non-existing directory
         non_existing = os.path.join(self.test_dir, "nonexistent")
-        self.assertFalse(file_writer.directory_exists(non_existing))
+        self.assertFalse(_file_writer.directory_exists(non_existing))
         
         # Test file (should return False)
-        self.assertFalse(file_writer.directory_exists(self.test_file))
+        self.assertFalse(_file_writer.directory_exists(self.test_file))
 
     def test_get_file_size(self):
         """
@@ -381,14 +381,14 @@ class TestFileUtilityFunctions(unittest.TestCase):
         - Should raise FileNotFoundError for non-existing files
         """
         # Test existing file
-        size = file_writer.get_file_size(self.test_file)
+        size = _file_writer.get_file_size(self.test_file)
         self.assertIsInstance(size, int)
         self.assertGreater(size, 0)
         
         # Test non-existing file
         non_existing = os.path.join(self.test_dir, "nonexistent.py")
         with self.assertRaises(FileNotFoundError):
-            file_writer.get_file_size(non_existing)
+            _file_writer.get_file_size(non_existing)
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@ from typing import Dict, List, Any, Optional
 
 # Import modules under test
 try:
-    import tools.cli.mermaid_to_prototype.class_diagram_to_python_files.python_code_generator as python_code_generator
+    import tools.cli.mermaid_to_prototype.class_diagram_to_python_files._python_code_generator as _python_code_generator
 except ImportError as e:
     raise ImportError(f"Failed to import necessary modules: {e}")
 
@@ -79,7 +79,7 @@ class TestGenerateClassCodeMainFunction(unittest.TestCase):
         - Proper Python syntax should be used
         - Type hints should be included when enabled
         """
-        result = python_code_generator.generate_class_code(
+        result = _python_code_generator.generate_class_code(
             self.basic_class_def, 
             self.default_options
         )
@@ -131,7 +131,7 @@ class TestGenerateClassCodeMainFunction(unittest.TestCase):
             'annotations': ['abstract']
         }
         
-        result = python_code_generator.generate_class_code(
+        result = _python_code_generator.generate_class_code(
             abstract_class_def, 
             self.default_options
         )
@@ -174,7 +174,7 @@ class TestGenerateClassCodeMainFunction(unittest.TestCase):
             'annotations': ['enumeration']
         }
         
-        result = python_code_generator.generate_class_code(
+        result = _python_code_generator.generate_class_code(
             enum_class_def, 
             self.default_options
         )
@@ -222,7 +222,7 @@ class TestGenerateClassCodeMainFunction(unittest.TestCase):
             'annotations': ['interface']
         }
         
-        result = python_code_generator.generate_class_code(
+        result = _python_code_generator.generate_class_code(
             interface_class_def, 
             self.default_options
         )
@@ -254,7 +254,7 @@ class TestGenerateClassCodeMainFunction(unittest.TestCase):
         options = self.default_options.copy()
         options['include_docstrings'] = False
         
-        result = python_code_generator.generate_class_code(
+        result = _python_code_generator.generate_class_code(
             self.basic_class_def, 
             options
         )
@@ -285,7 +285,7 @@ class TestGenerateClassCodeMainFunction(unittest.TestCase):
         options = self.default_options.copy()
         options['include_type_hints'] = False
         
-        result = python_code_generator.generate_class_code(
+        result = _python_code_generator.generate_class_code(
             self.basic_class_def, 
             options
         )
@@ -320,7 +320,7 @@ class TestGenerateClassCodeMainFunction(unittest.TestCase):
             'annotations': []
         }
         
-        result = python_code_generator.generate_class_code(
+        result = _python_code_generator.generate_class_code(
             empty_class_def, 
             self.default_options
         )
@@ -365,7 +365,7 @@ class TestGenerateInitFileFunction(unittest.TestCase):
             {'name': 'Cat', 'filename': 'cat.py'}
         ]
         
-        result = python_code_generator.generate_init_file(classes)
+        result = _python_code_generator.generate_init_file(classes)
         
         # Verify module docstring
         self.assertIn('"""Generated Python classes from Mermaid class diagram."""', result)
@@ -399,7 +399,7 @@ class TestGenerateInitFileFunction(unittest.TestCase):
             {'name': 'SingleClass', 'filename': 'single_class.py'}
         ]
         
-        result = python_code_generator.generate_init_file(classes)
+        result = _python_code_generator.generate_init_file(classes)
         
         # Verify single import
         self.assertIn("from .single_class import SingleClass", result)
@@ -424,7 +424,7 @@ class TestGenerateInitFileFunction(unittest.TestCase):
         """
         classes = []
         
-        result = python_code_generator.generate_init_file(classes)
+        result = _python_code_generator.generate_init_file(classes)
         
         # Verify basic structure
         self.assertIn('"""Generated Python classes from Mermaid class diagram."""', result)
@@ -467,7 +467,7 @@ class TestHelperFunctionsNamingAndTypes(unittest.TestCase):
         ]
         
         for input_name, expected_output in test_cases:
-            result = python_code_generator._apply_naming_convention(input_name, options)
+            result = _python_code_generator._apply_naming_convention(input_name, options)
             self.assertEqual(result, expected_output, 
                            f"Failed for input '{input_name}': expected '{expected_output}', got '{result}'")
 
@@ -494,7 +494,7 @@ class TestHelperFunctionsNamingAndTypes(unittest.TestCase):
         ]
         
         for name in test_cases:
-            result = python_code_generator._apply_naming_convention(name, options)
+            result = _python_code_generator._apply_naming_convention(name, options)
             self.assertEqual(result, name)
 
     def test_apply_naming_convention_default(self):
@@ -510,7 +510,7 @@ class TestHelperFunctionsNamingAndTypes(unittest.TestCase):
         """
         options = {}  # No naming_convention specified
         
-        result = python_code_generator._apply_naming_convention('CamelCase', options)
+        result = _python_code_generator._apply_naming_convention('CamelCase', options)
         self.assertEqual(result, 'camel_case')
 
     def test_convert_type_to_python_basic_types(self):
@@ -541,7 +541,7 @@ class TestHelperFunctionsNamingAndTypes(unittest.TestCase):
         ]
         
         for mermaid_type, expected_python_type in test_cases:
-            result = python_code_generator._convert_type_to_python(mermaid_type)
+            result = _python_code_generator._convert_type_to_python(mermaid_type)
             self.assertEqual(result, expected_python_type)
 
     def test_convert_type_to_python_generic_types(self):
@@ -563,7 +563,7 @@ class TestHelperFunctionsNamingAndTypes(unittest.TestCase):
         ]
         
         for mermaid_type, expected_python_type in test_cases:
-            result = python_code_generator._convert_type_to_python(mermaid_type)
+            result = _python_code_generator._convert_type_to_python(mermaid_type)
             self.assertEqual(result, expected_python_type)
 
     def test_convert_type_to_python_unknown_types(self):
@@ -580,7 +580,7 @@ class TestHelperFunctionsNamingAndTypes(unittest.TestCase):
         unknown_types = ['CustomType', 'MyClass', 'SomeInterface']
         
         for unknown_type in unknown_types:
-            result = python_code_generator._convert_type_to_python(unknown_type)
+            result = _python_code_generator._convert_type_to_python(unknown_type)
             self.assertEqual(result, unknown_type)
 
     def test_get_default_value_basic_types(self):
@@ -612,7 +612,7 @@ class TestHelperFunctionsNamingAndTypes(unittest.TestCase):
         ]
         
         for attr_type, expected_default in test_cases:
-            result = python_code_generator._get_default_value(attr_type)
+            result = _python_code_generator._get_default_value(attr_type)
             self.assertEqual(result, expected_default)
 
     def test_get_default_value_generic_types(self):
@@ -636,7 +636,7 @@ class TestHelperFunctionsNamingAndTypes(unittest.TestCase):
         ]
         
         for attr_type, expected_default in test_cases:
-            result = python_code_generator._get_default_value(attr_type)
+            result = _python_code_generator._get_default_value(attr_type)
             self.assertEqual(result, expected_default)
 
     def test_get_default_value_unknown_types(self):
@@ -653,7 +653,7 @@ class TestHelperFunctionsNamingAndTypes(unittest.TestCase):
         unknown_types = ['CustomType', 'MyClass', 'UnknownType']
         
         for unknown_type in unknown_types:
-            result = python_code_generator._get_default_value(unknown_type)
+            result = _python_code_generator._get_default_value(unknown_type)
             self.assertEqual(result, 'None')
 
 
@@ -688,7 +688,7 @@ class TestImportGenerationFunction(unittest.TestCase):
         }
         options = {'include_type_hints': True}
         
-        result = python_code_generator._generate_imports(class_def, options)
+        result = _python_code_generator._generate_imports(class_def, options)
         
         self.assertIn("from abc import ABC, abstractmethod", result)
 
@@ -712,7 +712,7 @@ class TestImportGenerationFunction(unittest.TestCase):
         }
         options = {'include_type_hints': True}
         
-        result = python_code_generator._generate_imports(class_def, options)
+        result = _python_code_generator._generate_imports(class_def, options)
         
         self.assertIn("from enum import Enum", result)
 
@@ -737,7 +737,7 @@ class TestImportGenerationFunction(unittest.TestCase):
         }
         options = {'include_type_hints': True}
         
-        result = python_code_generator._generate_imports(class_def, options)
+        result = _python_code_generator._generate_imports(class_def, options)
         
         self.assertIn("from typing import TypeVar, Generic", result)
 
@@ -773,7 +773,7 @@ class TestImportGenerationFunction(unittest.TestCase):
         }
         options = {'include_type_hints': True}
         
-        result = python_code_generator._generate_imports(class_def, options)
+        result = _python_code_generator._generate_imports(class_def, options)
         
         # Should contain typing imports
         self.assertIn("from typing import", result)
@@ -803,7 +803,7 @@ class TestImportGenerationFunction(unittest.TestCase):
         }
         options = {'include_type_hints': False}
         
-        result = python_code_generator._generate_imports(class_def, options)
+        result = _python_code_generator._generate_imports(class_def, options)
         
         # Should still have ABC import for abstract class
         self.assertIn("from abc import ABC, abstractmethod", result)
@@ -840,7 +840,7 @@ class TestImportGenerationFunction(unittest.TestCase):
         }
         options = {'include_type_hints': True}
         
-        result = python_code_generator._generate_imports(class_def, options)
+        result = _python_code_generator._generate_imports(class_def, options)
         
         # Should be empty or contain only minimal imports
         self.assertFalse(result or result.strip() == "")
@@ -874,7 +874,7 @@ class TestClassHeaderAndDocstringGeneration(unittest.TestCase):
         }
         options = {}
         
-        result = python_code_generator._generate_class_header(class_def, options)
+        result = _python_code_generator._generate_class_header(class_def, options)
         
         self.assertEqual(result, "class SimpleClass:")
 
@@ -896,7 +896,7 @@ class TestClassHeaderAndDocstringGeneration(unittest.TestCase):
         }
         options = {}
         
-        result = python_code_generator._generate_class_header(class_def, options)
+        result = _python_code_generator._generate_class_header(class_def, options)
         
         self.assertEqual(result, "class AbstractClass(ABC):")
 
@@ -918,7 +918,7 @@ class TestClassHeaderAndDocstringGeneration(unittest.TestCase):
         }
         options = {}
         
-        result = python_code_generator._generate_class_header(class_def, options)
+        result = _python_code_generator._generate_class_header(class_def, options)
         
         self.assertEqual(result, "class ColorEnum(Enum):")
 
@@ -941,7 +941,7 @@ class TestClassHeaderAndDocstringGeneration(unittest.TestCase):
         }
         options = {}
         
-        result = python_code_generator._generate_class_header(class_def, options)
+        result = _python_code_generator._generate_class_header(class_def, options)
         
         self.assertEqual(result, "class GenericClass(Generic[T, U]):")
 
@@ -967,7 +967,7 @@ class TestClassHeaderAndDocstringGeneration(unittest.TestCase):
         ]
         
         for class_def, expected_docstring in test_cases:
-            result = python_code_generator._generate_class_docstring(class_def)
+            result = _python_code_generator._generate_class_docstring(class_def)
             self.assertEqual(result, expected_docstring)
 
 
@@ -1020,7 +1020,7 @@ class TestMethodGeneration(unittest.TestCase):
             'is_abstract': False
         }
         
-        result = python_code_generator._generate_single_method(
+        result = _python_code_generator._generate_single_method(
             method_def, self.basic_class_def, self.default_options
         )
         
@@ -1059,7 +1059,7 @@ class TestMethodGeneration(unittest.TestCase):
             'is_abstract': False
         }
         
-        result = python_code_generator._generate_single_method(
+        result = _python_code_generator._generate_single_method(
             method_def, self.basic_class_def, self.default_options
         )
         
@@ -1092,7 +1092,7 @@ class TestMethodGeneration(unittest.TestCase):
             'is_abstract': False
         }
         
-        result = python_code_generator._generate_single_method(
+        result = _python_code_generator._generate_single_method(
             method_def, self.basic_class_def, self.default_options
         )
         
@@ -1127,7 +1127,7 @@ class TestMethodGeneration(unittest.TestCase):
             'is_abstract': True
         }
         
-        result = python_code_generator._generate_single_method(
+        result = _python_code_generator._generate_single_method(
             method_def, self.basic_class_def, self.default_options
         )
         
@@ -1162,7 +1162,7 @@ class TestMethodGeneration(unittest.TestCase):
             'is_abstract': False
         }
         
-        result = python_code_generator._generate_single_method(
+        result = _python_code_generator._generate_single_method(
             method_def, self.basic_class_def, self.default_options
         )
         
@@ -1197,7 +1197,7 @@ class TestMethodGeneration(unittest.TestCase):
         options = self.default_options.copy()
         options['include_type_hints'] = False
         
-        result = python_code_generator._generate_single_method(
+        result = _python_code_generator._generate_single_method(
             method_def, self.basic_class_def, options
         )
         
@@ -1239,7 +1239,7 @@ class TestMethodGeneration(unittest.TestCase):
             ]
         }
         
-        result = python_code_generator._generate_methods(class_def, self.default_options)
+        result = _python_code_generator._generate_methods(class_def, self.default_options)
         
         # Verify both methods are present
         self.assertIn("def method1(self) -> None:", result)
@@ -1274,7 +1274,7 @@ class TestMethodGeneration(unittest.TestCase):
             ]
         }
         
-        result = python_code_generator._generate_methods(class_def, self.default_options)
+        result = _python_code_generator._generate_methods(class_def, self.default_options)
         
         # Should be empty for enum
         self.assertEqual(result, "")
@@ -1333,7 +1333,7 @@ class TestInitAndAttributeGeneration(unittest.TestCase):
             ]
         }
         
-        result = python_code_generator._generate_init_method(class_def, self.default_options)
+        result = _python_code_generator._generate_init_method(class_def, self.default_options)
         
         # Verify __init__ method structure
         self.assertIn("def __init__(self):", result)
@@ -1375,7 +1375,7 @@ class TestInitAndAttributeGeneration(unittest.TestCase):
             ]
         }
         
-        result = python_code_generator._generate_init_method(class_def, self.default_options)
+        result = _python_code_generator._generate_init_method(class_def, self.default_options)
         
         # Verify private/protected attribute naming
         self.assertIn("self._private_var: str = \"\"", result)
@@ -1406,7 +1406,7 @@ class TestInitAndAttributeGeneration(unittest.TestCase):
             ]
         }
         
-        result = python_code_generator._generate_init_method(class_def, self.default_options)
+        result = _python_code_generator._generate_init_method(class_def, self.default_options)
         
         # Verify super() call
         self.assertIn("super().__init__()", result)
@@ -1429,7 +1429,7 @@ class TestInitAndAttributeGeneration(unittest.TestCase):
             'attributes': []
         }
         
-        result = python_code_generator._generate_init_method(class_def, self.default_options)
+        result = _python_code_generator._generate_init_method(class_def, self.default_options)
         
         self.assertEqual(result, "")
 
@@ -1451,7 +1451,7 @@ class TestInitAndAttributeGeneration(unittest.TestCase):
             'attributes': []
         }
         
-        result = python_code_generator._generate_init_method(class_def, self.default_options)
+        result = _python_code_generator._generate_init_method(class_def, self.default_options)
         
         self.assertEqual(result, "")
 
@@ -1473,7 +1473,7 @@ class TestInitAndAttributeGeneration(unittest.TestCase):
             'attributes': []
         }
         
-        result = python_code_generator._generate_init_method(class_def, self.default_options)
+        result = _python_code_generator._generate_init_method(class_def, self.default_options)
         
         self.assertIn("def __init__(self):", result)
         self.assertIn("pass", result)
@@ -1510,7 +1510,7 @@ class TestInitAndAttributeGeneration(unittest.TestCase):
             ]
         }
         
-        result = python_code_generator._generate_class_attributes(class_def, self.default_options)
+        result = _python_code_generator._generate_class_attributes(class_def, self.default_options)
         
         # Verify static attributes
         self.assertIn("static_var: str = \"\"", result)
@@ -1539,7 +1539,7 @@ class TestInitAndAttributeGeneration(unittest.TestCase):
             ]
         }
         
-        result = python_code_generator._generate_class_attributes(class_def, self.default_options)
+        result = _python_code_generator._generate_class_attributes(class_def, self.default_options)
         
         # Verify enum values
         self.assertIn('RED = "RED"', result)
@@ -1571,7 +1571,7 @@ class TestInitAndAttributeGeneration(unittest.TestCase):
             ]
         }
         
-        result = python_code_generator._generate_class_attributes(class_def, self.default_options)
+        result = _python_code_generator._generate_class_attributes(class_def, self.default_options)
         
         self.assertEqual(result, "")
 
