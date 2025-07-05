@@ -22,22 +22,6 @@ from utils.server.get_functions_tools_from_files import get_function_tools_from_
 # Initialize FastMCP server
 mcp = FastMCP("claudes_toolbox")
 
-# _THIS_FILE = Path(__file__)
-# _THIS_DIR = _THIS_FILE.parent
-# _PATHS_DICT = {
-#     "_THIS_FILE": _THIS_FILE,
-#     "this_dir": _THIS_DIR,
-#     "project_dir": _THIS_DIR.parent,
-#     "venv_dir": _THIS_DIR / ".venv",
-#     "server_dir": _THIS_DIR,
-#     "tools_dir": _THIS_DIR / "tools",
-# }
-# for key, path in _PATHS_DICT.items():
-#     if not path.exists():
-#         raise FileNotFoundError(f"Path '{path}' does not exist.")
-#     else:
-#         _PATHS_DICT[key] = path.resolve()
-
 class TotalTools:
     MAX_TOOL_COUNT = 129
 
@@ -50,7 +34,9 @@ class TotalTools:
         self.count += 1
         return self.count
 
+
 total_tools = TotalTools()
+
 
 class CliTools:
     """
@@ -455,24 +441,6 @@ class CliTools:
         stdout = run_tool(cmd, "Codebase Search")
         return stdout
 
-# @mcp.prompt()
-# def debug_mode() -> list[Prompt]: # TODO debug_mode currently does not work. Figure out why.
-#     log_level = configs.log_level
-#     none_prompt = [{"role": "user", "content": ""}] # Equivalent to returning None, hopefully.
-#     match log_level:
-#         case 10:
-#             type_, tooltip = "DEBUG", """
-# Tools may not be available or work as expected. If a tool returns an error, you do
-# not attempt to use it again, report the error to the developer verbatim, then await further instructions.
-# """
-#         case 20 | 30 | 40 | 50:
-#             return none_prompt
-#         case _: 
-#             return none_prompt
-#     return [{ "role": "user", "content": f"This server is in {type_} mode: {tooltip} "}]
-
-# import threading
-# import time
 
 if __name__ == "__main__":
 
@@ -497,6 +465,9 @@ if __name__ == "__main__":
         keyboard_interrupt = True
         mcp_logger.info("Server stopped by user.")
     finally:
+        import time
         if not keyboard_interrupt:
             mcp_logger.info("Server stopped.")
+        # Wait a moment for any daemons/threads to join.
+        time.sleep(1)
         sys.exit(0)

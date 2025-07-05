@@ -3,7 +3,7 @@ from pathlib import Path
 from logger import mcp_logger
 
 
-def register_files_in_functions_dir():
+def register_files_in_functions_dir() -> list[str]:
     """
     Register all Python files in the functions directory as modules.
     This allows for dynamic loading of function modules.
@@ -22,6 +22,7 @@ def register_files_in_functions_dir():
                 continue
             else:
                 modules.append(module_name)
+    # Sort the modules alphabetically
     return sorted(modules)
 
 modules_names = register_files_in_functions_dir()

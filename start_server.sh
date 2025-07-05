@@ -18,6 +18,12 @@ set -a
 source .env 
 set +a
 
+# Check if the server is already running
+if pgrep -f "source .venv/bin/activate && uv run server.py" > /dev/null; then
+    echo "Server is already running."
+    exit 0
+fi
+
 # Activate the virtual environment, then rn the Python script
 if [ -d "venv" ]; then
     source venv/bin/activate && python server.py

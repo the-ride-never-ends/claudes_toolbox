@@ -4,13 +4,21 @@ Test suite for extract_function_stubs function.
 
 Docstring:
 =================
-Extract function stubs from a Python file.
+Extract function stubs from a Python file or directory.
 
-Parses a Python file to identify all callable definitions and extracts
+Parses Python files to identify all callable definitions and extracts
 their signatures, type hints, and docstrings to create function stubs.
 
+If a directory is provided, all Python files in the directory will be
+processed. If a file is provided, only that file will be processed.
+
 Args:
-    file_path (str): Path to the Python file to analyze.
+    path (str): Path to the Python file or directory to analyze.
+    markdown_path (Optional[str]): If provided, the function will write
+        the extracted stubs to a markdown file at this path. If not
+        specified, no markdown file will be created.
+    recursive (bool): If True and path is a directory, search subdirectories
+        recursively for Python files. Ignored if path is a file.
 
 Returns:
     List[Dict[str, Any]]: A list of dictionaries, each containing:
@@ -19,29 +27,36 @@ Returns:
         - 'docstring' (Optional[str]): The function's docstring if present
         - 'is_async' (bool): Whether the function is an async function
         - 'is_method' (bool): Whether the function is a class method
+        - 'decorators' (list[str]): List of decorator names as strings
         - 'class_name' (Optional[str]): Name of containing class if is_method is True
+        - 'file_path' (str): Path to the file containing this function/class
 
 Raises:
-    FileNotFoundError: If the specified file does not exist.
-    PermissionError: If the file cannot be read due to permission issues.
-    SyntaxError: If the Python file contains syntax errors.
-    ValueError: If the file_path is empty or invalid.
+    PermissionError: If files cannot be read due to permission issues.
+    SyntaxError: If Python files contain syntax errors.
+    ValueError: If the path is empty or invalid.
     OSError: If there are other file system related errors.
 
 Example:
+    >>> # Extract from a single file
     >>> stubs = extract_function_stubs('my_module.py')
     >>> for stub in stubs:
-    ...     print(f"Function: {stub['name']}")
+    ...     print(f"Function: {stub['name']} in {stub['file_path']}")
     ...     print(f"Signature: {stub['signature']}")
     ...     if stub['docstring']:
     ...         print(f"Docstring: {stub['docstring'][:50]}...")
-    >>> # Example usage in a script:
-    >>> stubs = extract_function_stubs('./src/utils.py')
+    >>> 
+    >>> # Extract from a directory
+    >>> stubs = extract_function_stubs('./src/', recursive=True)
     >>> async_funcs = [s for s in stubs if s['is_async']]
+    >>> 
+    >>> # Extract from directory with markdown output
+    >>> stubs = extract_function_stubs('./src/', 'output.md', recursive=False)
 """
 import unittest
 import tempfile
 import os
+import json
 from typing import Any, List, Dict
 from tools.functions.extract_function_stubs import extract_function_stubs
 
@@ -394,12 +409,13 @@ class TestClassAndMethodTests(unittest.TestCase):
             try:
                 result = extract_function_stubs(f.name)
                 
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'instance_method')
-                self.assertTrue(stub['is_method'])
-                self.assertEqual(stub['class_name'], 'MyClass')
-                self.assertIn('self, x: int', stub['signature'])
+                self.assertEqual(len(result), 2)  # One for class, one for method
+                # Find the method stub by name
+                method_stub = next(s for s in result if s['name'] == 'instance_method')
+                self.assertEqual(method_stub['name'], 'instance_method')
+                self.assertTrue(method_stub['is_method'])
+                self.assertEqual(method_stub['class_name'], 'MyClass')
+                self.assertIn('self, x: int', method_stub['signature'])
             finally:
                 os.unlink(f.name)
     
@@ -424,13 +440,14 @@ class TestClassAndMethodTests(unittest.TestCase):
             try:
                 result = extract_function_stubs(f.name)
                 
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'static_method')
-                self.assertTrue(stub['is_method'])
-                self.assertEqual(stub['class_name'], 'MyClass')
-                self.assertIn('x: int', stub['signature'])
-                self.assertNotIn('self', stub['signature'])
+                self.assertEqual(len(result), 2)  # One for class, one for method
+                # Find the static method stub by name
+                method_stub = next(s for s in result if s['name'] == 'static_method')
+                self.assertEqual(method_stub['name'], 'static_method')
+                self.assertTrue(method_stub['is_method'])
+                self.assertEqual(method_stub['class_name'], 'MyClass')
+                self.assertIn('x: int', method_stub['signature'])
+                self.assertNotIn('self', method_stub['signature'])
             finally:
                 os.unlink(f.name)
     
@@ -455,12 +472,13 @@ class TestClassAndMethodTests(unittest.TestCase):
             try:
                 result = extract_function_stubs(f.name)
                 
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'class_method')
-                self.assertTrue(stub['is_method'])
-                self.assertEqual(stub['class_name'], 'MyClass')
-                self.assertIn('cls, x: int', stub['signature'])
+                self.assertEqual(len(result), 2) # One for class, one for method
+                # Find the class method stub by name
+                method_stub = next(s for s in result if s['name'] == 'class_method')
+                self.assertEqual(method_stub['name'], 'class_method')
+                self.assertTrue(method_stub['is_method'])
+                self.assertEqual(method_stub['class_name'], 'MyClass')
+                self.assertIn('cls, x: int', method_stub['signature'])
             finally:
                 os.unlink(f.name)
     
@@ -486,13 +504,14 @@ class TestClassAndMethodTests(unittest.TestCase):
                 result = extract_function_stubs(f.name)
                 
                 # Properties might be included or excluded - test for either behavior
-                if len(result) == 1:
-                    stub = result[0]
-                    self.assertEqual(stub['name'], 'my_property')
-                    self.assertTrue(stub['is_method'])
-                    self.assertEqual(stub['class_name'], 'MyClass')
+                if len(result) == 2:
+                    # Find the property stub by name
+                    property_stub = next(s for s in result if s['name'] == 'my_property')
+                    self.assertEqual(property_stub['name'], 'my_property')
+                    self.assertTrue(property_stub['is_method'])
+                    self.assertEqual(property_stub['class_name'], 'MyClass')
                 else:
-                    self.assertEqual(len(result), 0)
+                    self.assertEqual(len(result), 1)  # Just the class
             finally:
                 os.unlink(f.name)
     
@@ -521,7 +540,7 @@ class TestClassAndMethodTests(unittest.TestCase):
             try:
                 result = extract_function_stubs(f.name)
                 
-                self.assertEqual(len(result), 2)
+                self.assertEqual(len(result), 4) # Two classes + two methods
                 
                 # Find methods by name
                 inner_stub = next(s for s in result if s['name'] == 'inner_method')
@@ -558,7 +577,7 @@ class Child(Parent):
             try:
                 result = extract_function_stubs(f.name)
                 
-                self.assertEqual(len(result), 2)
+                self.assertEqual(len(result), 4) # Two classes + two methods
                 
                 # Find methods by name
                 parent_stub = next(s for s in result if s['name'] == 'parent_method')
@@ -641,13 +660,245 @@ class TestAsyncFunctionTests(unittest.TestCase):
             try:
                 result = extract_function_stubs(f.name)
                 
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertTrue(stub['is_async'])
-                self.assertTrue(stub['is_method'])
-                self.assertEqual(stub['class_name'], 'MyClass')
+                self.assertEqual(len(result), 2)  # One for class, one for method
+                # Find the async method stub by name
+                method_stub = next(s for s in result if s['name'] == 'async_method')
+                self.assertTrue(method_stub['is_async'])
+                self.assertTrue(method_stub['is_method'])
+                self.assertEqual(method_stub['class_name'], 'MyClass')
             finally:
                 os.unlink(f.name)
+
+
+class TestDirectoryFunctionality(unittest.TestCase):
+    """Test directory handling functionality."""
+    
+    def test_directory_with_single_python_file(self):
+        """
+        GIVEN a directory with one Python file containing functions
+        WHEN extract_function_stubs is called on the directory
+        THEN expect functions from that file to be extracted
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a Python file in the directory
+            python_file = os.path.join(tmpdir, 'test_module.py')
+            with open(python_file, 'w') as f:
+                f.write('''def func1():
+    """First function."""
+    pass
+
+def func2():
+    """Second function."""
+    pass
+''')
+            
+            result = extract_function_stubs(tmpdir)
+            
+            self.assertEqual(len(result), 2)
+            names = {stub['name'] for stub in result}
+            self.assertEqual(names, {'func1', 'func2'})
+            
+            # Check that file_path is set correctly
+            for stub in result:
+                self.assertEqual(stub['file_path'], python_file)
+    
+    def test_directory_with_multiple_python_files(self):
+        """
+        GIVEN a directory with multiple Python files
+        WHEN extract_function_stubs is called on the directory  
+        THEN expect functions from all files to be extracted
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create first Python file
+            file1 = os.path.join(tmpdir, 'module1.py')
+            with open(file1, 'w') as f:
+                f.write('''def func_from_file1():
+    pass
+''')
+            
+            # Create second Python file
+            file2 = os.path.join(tmpdir, 'module2.py')
+            with open(file2, 'w') as f:
+                f.write('''def func_from_file2():
+    pass
+''')
+            
+            result = extract_function_stubs(tmpdir)
+            
+            self.assertEqual(len(result), 2)
+            names = {stub['name'] for stub in result}
+            self.assertEqual(names, {'func_from_file1', 'func_from_file2'})
+            
+            # Check that file_path is set correctly for each function
+            file_paths = {stub['file_path'] for stub in result}
+            self.assertEqual(file_paths, {file1, file2})
+    
+    def test_directory_with_subdirectories_recursive_true(self):
+        """
+        GIVEN a directory with subdirectories containing Python files
+        WHEN extract_function_stubs is called with recursive=True
+        THEN expect functions from all files including subdirectories
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create file in root directory
+            root_file = os.path.join(tmpdir, 'root.py')
+            with open(root_file, 'w') as f:
+                f.write('''def root_func():
+    pass
+''')
+            
+            # Create subdirectory with file
+            subdir = os.path.join(tmpdir, 'subdir')
+            os.makedirs(subdir)
+            sub_file = os.path.join(subdir, 'sub.py')
+            with open(sub_file, 'w') as f:
+                f.write('''def sub_func():
+    pass
+''')
+            
+            result = extract_function_stubs(tmpdir, recursive=True)
+            
+            self.assertEqual(len(result), 2)
+            names = {stub['name'] for stub in result}
+            self.assertEqual(names, {'root_func', 'sub_func'})
+    
+    def test_directory_with_subdirectories_recursive_false(self):
+        """
+        GIVEN a directory with subdirectories containing Python files
+        WHEN extract_function_stubs is called with recursive=False
+        THEN expect functions only from root directory files
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create file in root directory
+            root_file = os.path.join(tmpdir, 'root.py')
+            with open(root_file, 'w') as f:
+                f.write('''def root_func():
+    pass
+''')
+            
+            # Create subdirectory with file
+            subdir = os.path.join(tmpdir, 'subdir')
+            os.makedirs(subdir)
+            sub_file = os.path.join(subdir, 'sub.py')
+            with open(sub_file, 'w') as f:
+                f.write('''def sub_func():
+    pass
+''')
+            
+            result = extract_function_stubs(tmpdir, recursive=False)
+            
+            self.assertEqual(len(result), 1)
+            names = {stub['name'] for stub in result}
+            self.assertEqual(names, {'root_func'})
+    
+    def test_directory_with_no_python_files(self):
+        """
+        GIVEN a directory with no Python files
+        WHEN extract_function_stubs is called
+        THEN expect empty list returned
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create some non-Python files
+            with open(os.path.join(tmpdir, 'readme.txt'), 'w') as f:
+                f.write('This is not Python')
+            
+            result = extract_function_stubs(tmpdir)
+            
+            self.assertEqual(result, [])
+    
+    def test_directory_with_mixed_file_types(self):
+        """
+        GIVEN a directory with Python files and other file types
+        WHEN extract_function_stubs is called
+        THEN expect only Python files to be processed
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create Python file
+            python_file = os.path.join(tmpdir, 'module.py')
+            with open(python_file, 'w') as f:
+                f.write('''def python_func():
+    pass
+''')
+            
+            # Create non-Python files
+            with open(os.path.join(tmpdir, 'readme.txt'), 'w') as f:
+                f.write('Not Python')
+            with open(os.path.join(tmpdir, 'data.json'), 'w') as f:
+                f.write('{"not": "python"}')
+            
+            result = extract_function_stubs(tmpdir)
+            
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0]['name'], 'python_func')
+    
+    def test_directory_with_syntax_error_files(self):
+        """
+        GIVEN a directory with one valid Python file and one with syntax errors
+        WHEN extract_function_stubs is called
+        THEN expect functions from valid file to be extracted, invalid file to be skipped
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create valid Python file
+            valid_file = os.path.join(tmpdir, 'valid.py')
+            with open(valid_file, 'w') as f:
+                f.write('''def valid_func():
+    pass
+''')
+            
+            # Create invalid Python file
+            invalid_file = os.path.join(tmpdir, 'invalid.py')
+            with open(invalid_file, 'w') as f:
+                f.write('''def broken_syntax(
+    # Missing closing parenthesis
+''')
+            
+            result = extract_function_stubs(tmpdir)
+            
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0]['name'], 'valid_func')
+
+
+class TestDirectoryMarkdownOutput(unittest.TestCase):
+    """Test markdown output for directory processing."""
+    
+    def test_directory_markdown_output_multiple_files(self):
+        """
+        GIVEN a directory with multiple Python files
+        WHEN extract_function_stubs is called with markdown_path
+        THEN expect markdown file to be created with functions from all files
+        """
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create multiple Python files
+            file1 = os.path.join(tmpdir, 'module1.py')
+            with open(file1, 'w') as f:
+                f.write('''def func1():
+    """Function from file 1."""
+    pass
+''')
+            
+            file2 = os.path.join(tmpdir, 'module2.py')
+            with open(file2, 'w') as f:
+                f.write('''def func2():
+    """Function from file 2."""
+    pass
+''')
+            
+            # Create markdown output file
+            md_file = os.path.join(tmpdir, 'output.md')
+            
+            result = extract_function_stubs(tmpdir, markdown_path=md_file)
+            
+            # Check that markdown file was created
+            self.assertTrue(os.path.exists(md_file))
+            
+            # Check markdown content
+            with open(md_file, 'r') as f:
+                content = f.read()
+                self.assertIn('func1', content)
+                self.assertIn('func2', content)
+                self.assertIn('Function from file 1', content)
+                self.assertIn('Function from file 2', content)
+                self.assertIn('Files processed:', content)
 
 
 class TestEdgeCasesAndErrorConditions(unittest.TestCase):
@@ -729,15 +980,6 @@ from typing import Any
             finally:
                 os.unlink(f.name)
     
-    def test_non_existent_file_path(self):
-        """
-        GIVEN a file path "/nonexistent/path/file.py"
-        WHEN extract_function_stubs is called
-        THEN expect FileNotFoundError to be raised
-        """
-        with self.assertRaises(FileNotFoundError):
-            extract_function_stubs('/nonexistent/path/file.py')
-    
     def test_empty_string_as_file_path(self):
         """
         GIVEN file_path = ""
@@ -746,16 +988,6 @@ from typing import Any
         """
         with self.assertRaises(ValueError):
             extract_function_stubs('')
-    
-    def test_directory_path_instead_of_file_path(self):
-        """
-        GIVEN a directory path "/some/directory"
-        WHEN extract_function_stubs is called
-        THEN expect appropriate error (IsADirectoryError or similar)
-        """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            with self.assertRaises((IsADirectoryError, OSError, ValueError)):
-                extract_function_stubs(tmpdir)
     
     def test_non_python_file_wrong_extension(self):
         """
@@ -1115,7 +1347,7 @@ class TestOutputValidation(unittest.TestCase):
             f.flush()
             try:
                 result = extract_function_stubs(f.name)
-                required_keys = {'name', 'signature', 'docstring', 'is_async', 'is_method', 'decorators', 'class_name'}
+                required_keys = {'name', 'signature', 'docstring', 'is_async', 'is_method', 'decorators', 'class_name', 'file_path'}
                 self.assertTrue(all(set(stub.keys()) == required_keys for stub in result))
             finally:
                 os.unlink(f.name)
@@ -1124,7 +1356,7 @@ class TestOutputValidation(unittest.TestCase):
         """
         GIVEN any valid function stub result
         WHEN examining the dictionary
-        THEN expect keys: ['name', 'signature', 'docstring', 'is_async', 'is_method', 'class_name']
+        THEN expect keys: ['name', 'signature', 'docstring', 'is_async', 'is_method', 'decorators', 'class_name', 'file_path']
         """
         with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
             f.write('''def another_func():
@@ -1133,7 +1365,7 @@ class TestOutputValidation(unittest.TestCase):
             f.flush()
             try:
                 result = extract_function_stubs(f.name)[0]
-                expected_keys = ['name', 'signature', 'docstring', 'is_async', 'is_method', 'decorators', 'class_name']
+                expected_keys = ['name', 'signature', 'docstring', 'is_async', 'is_method', 'decorators', 'class_name', 'file_path']
                 self.assertListEqual(sorted(result.keys()), sorted(expected_keys))
             finally:
                 os.unlink(f.name)
@@ -1148,7 +1380,9 @@ class TestOutputValidation(unittest.TestCase):
             - docstring: str | None
             - is_async: bool
             - is_method: bool
+            - decorators: list
             - class_name: str | None
+            - file_path: str
         """
         with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
             f.write('''async def async_func():
@@ -1163,7 +1397,9 @@ class TestOutputValidation(unittest.TestCase):
                 self.assertTrue(isinstance(result['docstring'], (str, type(None))))
                 self.assertIsInstance(result['is_async'], bool)
                 self.assertIsInstance(result['is_method'], bool)
+                self.assertIsInstance(result['decorators'], list)
                 self.assertTrue(isinstance(result['class_name'], (str, type(None))))
+                self.assertIsInstance(result['file_path'], str)
             finally:
                 os.unlink(f.name)
 
@@ -1325,7 +1561,7 @@ class ClassB:
             f.flush()
             try:
                 result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 4)
+                self.assertEqual(len(result), 6)  # 2 classes + 4 methods
                 class_a_methods = {stub['name'] for stub in result if stub['class_name'] == 'ClassA'}
                 class_b_methods = {stub['name'] for stub in result if stub['class_name'] == 'ClassB'}
 
@@ -1341,8 +1577,11 @@ class ClassB:
         THEN expect all functions to be present in the markdown output with correct formatting
         """
         with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
-            f.write('''
-class MyClass:
+            f.write('''from abc import ABC
+
+@class_decorator
+class MyClass(ABC):
+    """This is a class."""
     def method(self):
         """This is a method."""
         pass
@@ -1396,12 +1635,17 @@ async def async_decorated_standalone():
                     for func_name in expected_functions:
                         self.assertIn(f"## {func_name}", markdown_content)
 
+                    # Check if classes are included
+                    self.assertIn("## MyClass", markdown_content)
+                    self.assertIn("class MyClass(ABC):", markdown_content)
+
                     # Check if decorators are included
                     self.assertIn("@property", markdown_content)
                     self.assertIn("@random_decorator", markdown_content)
                     self.assertIn("@some_decorator", markdown_content)
                     self.assertIn("@some_other_decorator", markdown_content)
-                    
+                    self.assertIn("@class_decorator", markdown_content)
+
                     # Check for async functions properly marked
                     self.assertIn("async def async_standalone", markdown_content)
                     self.assertIn("async def async_decorated_standalone", markdown_content)
@@ -1414,6 +1658,7 @@ async def async_decorated_standalone():
                     self.assertIn("This is a method.", markdown_content)
                     self.assertIn("This is a standalone function.", markdown_content)
                     self.assertIn("This is an async standalone function.", markdown_content)
+                    self.assertIn("This is a class.", markdown_content)
                     
                     # Check metadata is present
                     self.assertIn("**Async:** True", markdown_content)
@@ -1427,6 +1672,782 @@ async def async_decorated_standalone():
                     os.unlink(f.name)
                     os.unlink(md_file.name)
 
+
+class TestClassDocstrings(unittest.TestCase):
+    """Test extraction of class docstrings."""
+    
+    def test_class_with_single_line_docstring(self):
+        """
+        GIVEN a temporary file with:
+            class SimpleClass:
+                \"\"\"A simple class with a single line docstring.\"\"\"
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "SimpleClass"
+            - docstring = "A simple class with a single line docstring."
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''class SimpleClass:
+    """A simple class with a single line docstring."""
+    pass
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                self.assertEqual(len(result), 1)
+                stub = result[0]
+                self.assertEqual(stub['name'], 'SimpleClass')
+                self.assertEqual(stub['docstring'], 'A simple class with a single line docstring.')
+                self.assertFalse(stub['is_async'])
+                self.assertFalse(stub['is_method'])
+                self.assertIsNone(stub['class_name'])
+            finally:
+                os.unlink(f.name)
+    
+    def test_class_with_multiline_docstring(self):
+        """
+        GIVEN a temporary file with:
+            class ComplexClass:
+                \"\"\"
+                A complex class with multiline docstring.
+                
+                This class demonstrates multiple lines
+                of documentation with proper formatting.
+                
+                Attributes:
+                    attr1 (int): First attribute
+                    attr2 (str): Second attribute
+                \"\"\"
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "ComplexClass"
+            - docstring contains all lines including "A complex class" and "Attributes:"
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''class ComplexClass:
+    """
+    A complex class with multiline docstring.
+    
+    This class demonstrates multiple lines
+    of documentation with proper formatting.
+    
+    Attributes:
+        attr1 (int): First attribute
+        attr2 (str): Second attribute
+    """
+    pass
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                self.assertEqual(len(result), 1)
+                stub = result[0]
+                self.assertEqual(stub['name'], 'ComplexClass')
+                self.assertIn('A complex class', stub['docstring'])
+                self.assertIn('Attributes:', stub['docstring'])
+                self.assertFalse(stub['is_async'])
+                self.assertFalse(stub['is_method'])
+                self.assertIsNone(stub['class_name'])
+            finally:
+                os.unlink(f.name)
+    
+    def test_class_without_docstring(self):
+        """
+        GIVEN a temporary file with:
+            class NoDocClass:
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "NoDocClass"
+            - docstring = None
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''class NoDocClass:
+    pass
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                self.assertEqual(len(result), 1)
+                stub = result[0]
+                self.assertEqual(stub['name'], 'NoDocClass')
+                self.assertIsNone(stub['docstring'])
+                self.assertFalse(stub['is_async'])
+                self.assertFalse(stub['is_method'])
+                self.assertIsNone(stub['class_name'])
+            finally:
+                os.unlink(f.name)
+    
+    def test_class_with_methods_and_class_docstring(self):
+        """
+        GIVEN a temporary file with:
+            class DocumentedClass:
+                \"\"\"Class-level documentation.\"\"\"
+                
+                def method1(self):
+                    \"\"\"Method-level documentation.\"\"\"
+                    pass
+        WHEN extract_function_stubs is called
+        THEN expect 2 results:
+            1. Class stub with:
+                - name = "DocumentedClass"
+                - docstring = "Class-level documentation."
+                - is_method = False
+                - class_name = None
+            2. Method stub with:
+                - name = "method1"
+                - docstring = "Method-level documentation."
+                - is_method = True
+                - class_name = "DocumentedClass"
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''class DocumentedClass:
+    """Class-level documentation."""
+    
+    def method1(self):
+        """Method-level documentation."""
+        pass
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                self.assertEqual(len(result), 2)
+                
+                # Find class and method stubs
+                class_stub = next(s for s in result if s['name'] == 'DocumentedClass')
+                method_stub = next(s for s in result if s['name'] == 'method1')
+                
+                # Check class stub
+                self.assertEqual(class_stub['docstring'], 'Class-level documentation.')
+                self.assertFalse(class_stub['is_method'])
+                self.assertIsNone(class_stub['class_name'])
+                
+                # Check method stub
+                self.assertEqual(method_stub['docstring'], 'Method-level documentation.')
+                self.assertTrue(method_stub['is_method'])
+                self.assertEqual(method_stub['class_name'], 'DocumentedClass')
+            finally:
+                os.unlink(f.name)
+
+
+class TestClassDecorators(unittest.TestCase):
+    """Test extraction of classes with decorators."""
+    
+    def test_class_with_single_decorator(self):
+        """
+        GIVEN a temporary file with:
+            @dataclass
+            class DataClass:
+                name: str
+                age: int
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "DataClass"
+            - signature or decorators info includes "@dataclass"
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''@dataclass
+class DataClass:
+    name: str
+    age: int
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                print(f"result: {result}")
+                self.assertEqual(len(result), 1)
+                stub = result[0]
+                self.assertEqual(stub['name'], 'DataClass')
+                # Check if decorator info is present (might be in signature or separate field)
+                self.assertTrue(
+                    'dataclass' in stub.get('signature', '') or 
+                    'dataclass' in str(stub.get('decorators', []))
+                )
+                self.assertFalse(stub['is_async'])
+                self.assertFalse(stub['is_method'])
+                self.assertIsNone(stub['class_name'])
+            finally:
+                os.unlink(f.name)
+    
+    def test_class_with_multiple_decorators(self):
+        """
+        GIVEN a temporary file with:
+            @decorator1
+            @decorator2(arg="value")
+            @decorator3
+            class MultiDecoratedClass:
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "MultiDecoratedClass"
+            - decorators info includes all three decorators in order
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''@decorator1
+@decorator2(arg="value")
+@decorator3
+class MultiDecoratedClass:
+    pass
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                self.assertEqual(len(result), 1)
+                stub = result[0]
+                self.assertEqual(stub['name'], 'MultiDecoratedClass')
+                # Check all decorators are present
+                stub_str = str(stub)
+                self.assertIn('decorator1', stub_str)
+                self.assertIn('decorator2', stub_str)
+                self.assertIn('decorator3', stub_str)
+                self.assertFalse(stub['is_async'])
+                self.assertFalse(stub['is_method'])
+                self.assertIsNone(stub['class_name'])
+            finally:
+                os.unlink(f.name)
+
+    def test_class_with_decorator_and_docstring(self):
+        """
+        GIVEN a temporary file with:
+            @singleton
+            class SingletonClass:
+                \"\"\"A singleton implementation.\"\"\"
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "SingletonClass"
+            - decorator info includes "@singleton"
+            - docstring = "A singleton implementation."
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''@singleton
+class SingletonClass:
+    """A singleton implementation."""
+    pass
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                self.assertEqual(len(result), 1)
+                stub = result[0]
+                self.assertEqual(stub['name'], 'SingletonClass')
+                self.assertIn('singleton', str(stub))
+                self.assertEqual(stub['docstring'], 'A singleton implementation.')
+                self.assertFalse(stub['is_async'])
+                self.assertFalse(stub['is_method'])
+                self.assertIsNone(stub['class_name'])
+            finally:
+                os.unlink(f.name)
+
+    def test_function_decorators_vs_class_decorators(self):
+        """
+        GIVEN a temporary file with:
+            @function_decorator
+            def decorated_func():
+                pass
+            
+            @class_decorator
+            class DecoratedClass:
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 2 results with appropriate decorator info for each
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''
+@function_decorator
+def decorated_func():
+    pass
+
+@class_decorator
+class DecoratedClass:
+    pass
+''')
+            f.flush()
+            
+            try:
+                from pprint import pprint
+                result = extract_function_stubs(f.name)
+                for idx, res in enumerate(result, start=1):
+                    pprint(f"{idx} result: {res}")
+                self.assertEqual(len(result), 2)
+                
+                func_stub = next(s for s in result if s['name'] == 'decorated_func')
+                class_stub = next(s for s in result if s['name'] == 'DecoratedClass')
+                
+                self.assertIn('function_decorator', str(func_stub))
+                self.assertIn('class_decorator', str(class_stub))
+            finally:
+                os.unlink(f.name)
+
+def add(x: int, y: int) -> int:
+    """Add two numbers.
+    
+    x: int
+    y: int
+
+    Returns:
+        int: The sum of x and y.
+    """
+    pass
+
+
+class TestClassInheritance(unittest.TestCase):
+    """Test extraction of class inheritance information."""
+
+    def test_class_with_single_inheritance(self):
+        """
+        GIVEN a temporary file with:
+            class ChildClass(ParentClass):
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "ChildClass"
+            - signature or inheritance info includes "ParentClass"
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''class ChildClass(ParentClass):
+    pass
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                self.assertEqual(len(result), 1)
+                stub = result[0]
+                self.assertEqual(stub['name'], 'ChildClass')
+                self.assertIn('ParentClass', stub.get('signature', ''))
+                self.assertFalse(stub['is_async'])
+                self.assertFalse(stub['is_method'])
+                self.assertIsNone(stub['class_name'])
+            finally:
+                os.unlink(f.name)
+    
+    def test_class_with_multiple_inheritance(self):
+        """
+        GIVEN a temporary file with:
+            class MultiChild(Parent1, Parent2, Parent3):
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "MultiChild"
+            - inheritance info includes all three parent classes in order
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''class MultiChild(Parent1, Parent2, Parent3):
+    pass
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                self.assertEqual(len(result), 1)
+                stub = result[0]
+                self.assertEqual(stub['name'], 'MultiChild')
+                sig = stub.get('signature', '')
+                self.assertIn('Parent1', sig)
+                self.assertIn('Parent2', sig)
+                self.assertIn('Parent3', sig)
+                self.assertFalse(stub['is_async'])
+                self.assertFalse(stub['is_method'])
+                self.assertIsNone(stub['class_name'])
+            finally:
+                os.unlink(f.name)
+    
+    def test_class_inheriting_from_builtin_types(self):
+        """
+        GIVEN a temporary file with:
+            class CustomList(list):
+                pass
+            
+            class CustomDict(dict):
+                pass
+            
+            class CustomException(Exception):
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 3 results with appropriate inheritance from builtins
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''class CustomList(list):
+    pass
+
+class CustomDict(dict):
+    pass
+
+class CustomException(Exception):
+    pass
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                self.assertEqual(len(result), 3)
+                
+                names_and_parents = {
+                    stub['name']: stub.get('signature', '') 
+                    for stub in result
+                }
+                
+                self.assertIn('list', names_and_parents['CustomList'])
+                self.assertIn('dict', names_and_parents['CustomDict'])
+                self.assertIn('Exception', names_and_parents['CustomException'])
+            finally:
+                os.unlink(f.name)
+
+    def test_class_with_generic_inheritance(self):
+        """
+        GIVEN a temporary file with:
+            from typing import Generic, TypeVar
+            
+            T = TypeVar('T')
+            
+            class GenericClass(Generic[T]):
+                pass
+            
+            class SpecificClass(GenericClass[str]):
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect results with:
+            - GenericClass inheriting from Generic[T]
+            - SpecificClass inheriting from GenericClass[str]
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class GenericClass(Generic[T]):
+    pass
+
+class SpecificClass(GenericClass[str]):
+    pass
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                # Filter out TypeVar assignment if it appears
+                class_results = [s for s in result if s['name'] in ['GenericClass', 'SpecificClass']]
+                self.assertEqual(len(class_results), 2)
+                
+                generic_stub = next(s for s in class_results if s['name'] == 'GenericClass')
+                specific_stub = next(s for s in class_results if s['name'] == 'SpecificClass')
+                
+                self.assertIn('Generic[T]', generic_stub.get('signature', ''))
+                self.assertIn('GenericClass[str]', specific_stub.get('signature', ''))
+            finally:
+                os.unlink(f.name)
+
+    def test_class_with_inheritance_decorator_and_docstring(self):
+        """
+        GIVEN a temporary file with:
+            @dataclass
+            class CompleteClass(BaseClass, Interface1, Interface2):
+                \"\"\"
+                A complete class with everything.
+                
+                This demonstrates inheritance, decorators, and docstring.
+                \"\"\"
+                field1: str
+                field2: int
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "CompleteClass"
+            - decorator info includes "@dataclass"
+            - inheritance info includes all three parent classes
+            - docstring contains the full multiline documentation
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''@dataclass
+class CompleteClass(BaseClass, Interface1, Interface2):
+    """
+    A complete class with everything.
+    
+    This demonstrates inheritance, decorators, and docstring.
+    """
+    field1: str
+    field2: int
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                self.assertEqual(len(result), 1)
+                stub = result[0]
+                
+                self.assertEqual(stub['name'], 'CompleteClass')
+                self.assertIn('dataclass', str(stub))
+                
+                sig = stub.get('signature', '')
+                self.assertIn('BaseClass', sig)
+                self.assertIn('Interface1', sig)
+                self.assertIn('Interface2', sig)
+                
+                self.assertIn('A complete class with everything', stub['docstring'])
+                self.assertIn('This demonstrates inheritance', stub['docstring'])
+                
+                self.assertFalse(stub['is_async'])
+                self.assertFalse(stub['is_method'])
+                self.assertIsNone(stub['class_name'])
+            finally:
+                os.unlink(f.name)
+
+    def test_nested_class_inheritance(self):
+        """
+        GIVEN a temporary file with:
+            class OuterClass:
+                class InnerBase:
+                    pass
+                
+                class InnerChild(InnerBase):
+                    pass
+        WHEN extract_function_stubs is called
+        THEN expect results showing:
+            - OuterClass (no inheritance)
+            - InnerBase (no inheritance, but nested in OuterClass)
+            - InnerChild (inheriting from InnerBase, nested in OuterClass)
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''class OuterClass:
+    class InnerBase:
+        pass
+    
+    class InnerChild(InnerBase):
+        pass
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                self.assertEqual(len(result), 3)
+                
+                outer_stub = next(s for s in result if s['name'] == 'OuterClass')
+                inner_base_stub = next(s for s in result if s['name'] == 'InnerBase')
+                inner_child_stub = next(s for s in result if s['name'] == 'InnerChild')
+                
+                # Check OuterClass has no inheritance
+                self.assertNotIn('(', outer_stub.get('signature', 'class OuterClass'))
+                
+                # Check InnerChild inherits from InnerBase
+                self.assertIn('InnerBase', inner_child_stub.get('signature', ''))
+                
+                # Both inner classes should have OuterClass as their class_name
+                self.assertEqual(inner_base_stub['class_name'], 'OuterClass')
+                self.assertEqual(inner_child_stub['class_name'], 'OuterClass')
+            finally:
+                os.unlink(f.name)
+
+
+class TestClassExtractionComplexScenarios(unittest.TestCase):
+    """Test complex combinations of class features."""
+
+    def test_abstract_class_with_decorators_and_inheritance(self):
+        """
+        GIVEN a temporary file with:
+            from abc import ABC, abstractmethod
+            
+            @dataclass
+            class AbstractBase(ABC):
+                \"\"\"Abstract base class.\"\"\"
+                
+                @abstractmethod
+                def required_method(self) -> None:
+                    \"\"\"Must be implemented by subclasses.\"\"\"
+                    pass
+        WHEN extract_function_stubs is called
+        THEN expect results for:
+            - AbstractBase class with decorator, inheritance from ABC, and docstring
+            - required_method with @abstractmethod decorator and docstring
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''from abc import ABC, abstractmethod
+
+@dataclass
+class AbstractBase(ABC):
+    """Abstract base class."""
+    
+    @abstractmethod
+    def required_method(self) -> None:
+        """Must be implemented by subclasses."""
+        pass
+''')
+            f.flush()
+
+            try:
+                result = extract_function_stubs(f.name)
+                # Should have at least AbstractBase and required_method
+                self.assertGreaterEqual(len(result), 2)
+
+                # Find the relevant stubs
+                class_stub = next(s for s in result if s['name'] == 'AbstractBase')
+                method_stub = next(s for s in result if s['name'] == 'required_method')
+
+                # Check class stub
+                self.assertIn('dataclass', str(class_stub))
+                self.assertIn('ABC', class_stub.get('signature', ''))
+                self.assertEqual(class_stub['docstring'], 'Abstract base class.')
+
+                # Check method stub
+                self.assertIn('abstractmethod', str(method_stub))
+                self.assertEqual(method_stub['docstring'], 'Must be implemented by subclasses.')
+                self.assertTrue(method_stub['is_method'])
+                self.assertEqual(method_stub['class_name'], 'AbstractBase')
+            finally:
+                os.unlink(f.name)
+
+    def test_metaclass_usage(self):
+        """
+        GIVEN a temporary file with:
+            class MetaClass(type):
+                \"\"\"A metaclass.\"\"\"
+                pass
+            
+            class ClassWithMeta(metaclass=MetaClass):
+                \"\"\"A class using a metaclass.\"\"\"
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect results showing:
+            - MetaClass inheriting from type
+            - ClassWithMeta with metaclass information
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''
+class MetaClass(type):
+    """A metaclass."""
+    pass
+
+class ClassWithMeta(metaclass=MetaClass):
+    """A class using a metaclass."""
+    pass
+''')
+            f.flush()
+            
+            try:
+                result = extract_function_stubs(f.name)
+                self.assertEqual(len(result), 2)
+                
+                meta_stub = next(s for s in result if s['name'] == 'MetaClass')
+                class_stub = next(s for s in result if s['name'] == 'ClassWithMeta')
+                
+                # Check MetaClass inherits from type
+                self.assertIn('type', meta_stub.get('signature', ''))
+                self.assertEqual(meta_stub['docstring'], 'A metaclass.')
+                
+                # Check ClassWithMeta has metaclass info
+                self.assertEqual(class_stub['docstring'], 'A class using a metaclass.')
+                # Metaclass info might be in signature or a separate field
+                self.assertIn('MetaClass', str(class_stub))
+            finally:
+                os.unlink(f.name)
+
+    def test_serialization_to_json(self):
+        """
+        GIVEN a temporary file with various functions and classes
+        WHEN extract_function_stubs is called with markdown_path
+        THEN expect a JSON file to be created alongside the markdown file
+        AND expect the JSON to contain all extracted stubs in serializable format
+        """
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+            f.write('''
+@dataclass
+class Person:
+    """A person class."""
+    name: str
+    age: int
+
+    def greet(self) -> str:
+        """Greet someone."""
+        return f"Hello, I'm {self.name}"
+
+async def fetch_data(url: str) -> dict:
+    """Fetch data from URL."""
+    pass
+
+def calculate(x: int, y: int = 5) -> int:
+    """Calculate sum."""
+    return x + y
+''')
+            f.flush()
+            
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as md_file:
+                try:
+                    result = extract_function_stubs(f.name, md_file.name)
+                    
+                    # Verify stubs were extracted
+                    self.assertIsInstance(result, list)
+                    self.assertGreater(len(result), 0)
+                    
+                    # Check JSON file was created
+                    json_path = md_file.name.replace('.md', '.json')
+                    self.assertTrue(os.path.exists(json_path))
+                    
+                    # Load and verify JSON content
+                    with open(json_path, 'r', encoding='utf-8') as json_file:
+                        json_data = json.load(json_file)
+                    
+                    self.assertIsInstance(json_data, list)
+                    self.assertEqual(len(json_data), len(result))
+                    
+                    # Verify all expected items are in JSON
+                    names = [item['name'] for item in json_data]
+                    expected_names = ['Person', 'greet', 'fetch_data', 'calculate']
+                    
+                    for expected_name in expected_names:
+                        self.assertIn(expected_name, names)
+                    
+                    # Verify structure of JSON entries
+                    for item in json_data:
+                        self.assertIn('name', item)
+                        self.assertIn('signature', item)
+                        self.assertIn('is_async', item)
+                        self.assertIn('is_method', item)
+                        self.assertIn('decorators', item)
+                        self.assertIn('class_name', item)
+                        # docstring can be None
+                        self.assertIn('docstring', item)
+                    
+                    # Clean up JSON file
+                    os.unlink(json_path)
+                    
+                finally:
+                    os.unlink(f.name)
+                    os.unlink(md_file.name)
 
 
 if __name__ == '__main__':

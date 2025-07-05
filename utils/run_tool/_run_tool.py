@@ -6,7 +6,7 @@ import subprocess as sub
 import sys
 import traceback
 from typing import Any, Callable
-
+import logging
 
 
 from configs import configs, Configs
@@ -28,10 +28,9 @@ class _RunTool:
 
         self._return_tool_call_results: Callable = self.resources['return_tool_call_results']
         self._return_text_content: Callable = self.resources['return_text_content']
-        self._logger: Callable = self.resources['logger']
-    
-    @staticmethod
-    def _reload_tool(func: Callable) -> None:
+        self._logger: logging.Logger = self.resources['logger']
+
+    def _reload_tool(self, func: Callable) -> None:
         """
         Reload a tool module before running it.
         This allows for dynamic updates to the tool without restarting the application.
@@ -39,20 +38,26 @@ class _RunTool:
         # Reload the module to ensure we have the latest version
         module_name = func.__module__
         if module_name in sys.modules:
+            self._logger.debug(f"Reloading module '{module_name}' for tool '{func.__name__}'")
             importlib.reload(sys.modules[module_name])
 
     def _run_func_tool(self, func: Callable, *args, **kwargs) -> CallToolResultType:
-        """Run a function tool with the given function and arguments.
+        """Run a function tool with the given function/coroutine and arguments.
         
-        This can be used to run both synchronous and asynchronous functions.
-        
+        This method provides a unified interface for executing both synchronous and asynchronous 
+        functions as tools. It handles proper async execution context management, result formatting,
+        and error handling.
+
         Args:
-            func: The function to execute.
+            func: The function or coroutine to execute as a tool.
             *args: Positional arguments to pass to the function.
             **kwargs: Keyword arguments to pass to the function.
-            
+
         Returns:
-            The result of the function execution wrapped in a CallToolResultType.
+            CallToolResultType (BaseModel): The result of the function execution wrapped in the 
+                expected result type. Contains either the function output
+                or exception information if execution failed.
+                Large outputs (>=20,000 chars) are truncated to 19,000 characters with ellipsis
         """
         try:
             # Reload the tool module to ensure we have the latest version
@@ -69,7 +74,8 @@ class _RunTool:
             else:
                 result = func(*args, **kwargs)
 
-            result_string = f"\n'{func.__qualname__}' output: {result}"
+            result_string = f"\n'{func.__qualname__}' output: {repr(result)}"
+            mcp_logger.debug(f"Function tool '{func.__name__}' executed successfully with result: {result_string}")
 
             # Truncate the output string to 19,000 if it exceeds 20,000 characters
             if len(result_string) >= 20000:
@@ -84,13 +90,24 @@ class _RunTool:
 
     def result(self, result: Any) -> CallToolResultType:
         """
-        Format the result of a tool call.
+        Format and process the result of a tool call into a standardized CallToolResultType.
+
+        This method handles various types of tool execution results and converts them into
+        a consistent return format. It performs error detection, logging, and message
+        formatting based on the result type.
 
         Args:
-            result: The result of the tool call, can be an arbitrary type or an exception.
+            result (Any): The result of the tool call execution. Can be:
+                - A CalledProcessError for failure results from external CLI tools.
+                - An Exception for general errors from function-based tools.
+                - A string for successful results
+                - Any other types are treated as errors.
 
         Returns:
-            A CallToolResultType object containing the result.
+            CallToolResultType: A standardized result object containing:
+                - Formatted content with the result data and status message
+                - Error flag indicating success (False) or failure (True)
+                - Appropriate logging based on configured log level
         """
         if self.configs.log_level == 10:
             mcp_logger.debug(f"Tool call result: {result}")

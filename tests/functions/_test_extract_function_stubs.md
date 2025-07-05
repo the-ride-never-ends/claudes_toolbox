@@ -111,6 +111,407 @@ class TestBasicFunctionality(unittest.TestCase):
         pass
 
 
+
+
+
+
+# Test plans for `extract_function_stubs` function.
+
+## Docstring:
+Extract function stubs from a Python file.
+
+Parses a Python file to identify all callable definitions and extracts
+their signatures, type hints, and docstrings to create function stubs.
+
+Args:
+    file_path (str): Path to the Python file to analyze.
+
+Returns:
+    List[Dict[str, Any]]: A list of dictionaries, each containing:
+        - 'name' (str): The function/class name
+        - 'signature' (str): Complete function signature with type hints
+        - 'docstring' (Optional[str]): The function's docstring if present
+        - 'is_async' (bool): Whether the function is an async function
+        - 'is_method' (bool): Whether the function is a class method
+        - 'class_name' (Optional[str]): Name of containing class if is_method is True
+
+Raises:
+    FileNotFoundError: If the specified file does not exist.
+    PermissionError: If the file cannot be read due to permission issues.
+    SyntaxError: If the Python file contains syntax errors.
+    ValueError: If the file_path is empty or invalid.
+    OSError: If there are other file system related errors.
+
+Example:
+    >>> stubs = extract_function_stubs('my_module.py')
+    >>> for stub in stubs:
+    ...     print(f"Function: {stub['name']}")
+    ...     print(f"Signature: {stub['signature']}")
+    ...     if stub['docstring']:
+    ...         print(f"Docstring: {stub['docstring'][:50]}...")
+    >>> # Example usage in a script:
+    >>> stubs = extract_function_stubs('./src/utils.py')
+    >>> async_funcs = [s for s in stubs if s['is_async']]
+
+## Test cases for the `extract_function_stubs` function.
+```python
+import unittest
+import tempfile
+import os
+from typing import Any, List, Dict
+from tools.functions.extract_function_stubs import extract_function_stubs
+
+
+class TestBasicFunctionality(unittest.TestCase):
+    """Test basic functionality of extract_function_stubs."""
+    
+    def test_simple_function_with_type_hints_and_docstring(self):
+        """
+        GIVEN a temporary file with:
+            def add_numbers(a: int, b: int) -> int:
+                \"\"\"Add two numbers together.\"\"\"
+                return a + b
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "add_numbers"
+            - signature contains "a: int, b: int) -> int"
+            - docstring = "Add two numbers together."
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        pass
+
+    def test_file_with_multiple_functions(self):
+        """
+        GIVEN a temporary file with:
+            def func1(): pass
+            def func2(): pass
+            def func3(): pass
+        WHEN extract_function_stubs is called
+        THEN expect 3 results with names ["func1", "func2", "func3"]
+        """
+        pass
+    
+    def test_functions_with_no_type_hints(self):
+        """
+        GIVEN a temporary file with:
+            def no_hints(a, b):
+                return a + b
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "no_hints"
+            - signature contains "(a, b)" without type annotations
+        """
+        pass
+
+
+class TestClassDocstrings(unittest.TestCase):
+    """Test extraction of class docstrings."""
+    
+    def test_class_with_single_line_docstring(self):
+        """
+        GIVEN a temporary file with:
+            class SimpleClass:
+                \"\"\"A simple class with a single line docstring.\"\"\"
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "SimpleClass"
+            - docstring = "A simple class with a single line docstring."
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        pass
+    
+    def test_class_with_multiline_docstring(self):
+        """
+        GIVEN a temporary file with:
+            class ComplexClass:
+                \"\"\"
+                A complex class with multiline docstring.
+                
+                This class demonstrates multiple lines
+                of documentation with proper formatting.
+                
+                Attributes:
+                    attr1 (int): First attribute
+                    attr2 (str): Second attribute
+                \"\"\"
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "ComplexClass"
+            - docstring contains all lines including "A complex class" and "Attributes:"
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        pass
+    
+    def test_class_without_docstring(self):
+        """
+        GIVEN a temporary file with:
+            class NoDocClass:
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "NoDocClass"
+            - docstring = None
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        pass
+    
+    def test_class_with_methods_and_class_docstring(self):
+        """
+        GIVEN a temporary file with:
+            class DocumentedClass:
+                \"\"\"Class-level documentation.\"\"\"
+                
+                def method1(self):
+                    \"\"\"Method-level documentation.\"\"\"
+                    pass
+        WHEN extract_function_stubs is called
+        THEN expect 2 results:
+            1. Class stub with:
+                - name = "DocumentedClass"
+                - docstring = "Class-level documentation."
+                - is_method = False
+                - class_name = None
+            2. Method stub with:
+                - name = "method1"
+                - docstring = "Method-level documentation."
+                - is_method = True
+                - class_name = "DocumentedClass"
+        """
+        pass
+
+class TestClassDecorators(unittest.TestCase):
+    """Test extraction of classes with decorators."""
+    
+    def test_class_with_single_decorator(self):
+        """
+        GIVEN a temporary file with:
+            @dataclass
+            class DataClass:
+                name: str
+                age: int
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "DataClass"
+            - signature or decorators info includes "@dataclass"
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        pass
+    
+    def test_class_with_multiple_decorators(self):
+        """
+        GIVEN a temporary file with:
+            @decorator1
+            @decorator2(arg="value")
+            @decorator3
+            class MultiDecoratedClass:
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "MultiDecoratedClass"
+            - decorators info includes all three decorators in order
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        pass
+
+    def test_class_with_decorator_and_docstring(self):
+        """
+        GIVEN a temporary file with:
+            @singleton
+            class SingletonClass:
+                \"\"\"A singleton implementation.\"\"\"
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "SingletonClass"
+            - decorator info includes "@singleton"
+            - docstring = "A singleton implementation."
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        pass
+
+    def test_function_decorators_vs_class_decorators(self):
+        """
+        GIVEN a temporary file with:
+            @function_decorator
+            def decorated_func():
+                pass
+            
+            @class_decorator
+            class DecoratedClass:
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 2 results with appropriate decorator info for each
+        """
+        pass
+
+
+class TestClassInheritance(unittest.TestCase):
+    """Test extraction of class inheritance information."""
+    
+    def test_class_with_single_inheritance(self):
+        """
+        GIVEN a temporary file with:
+            class ChildClass(ParentClass):
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "ChildClass"
+            - signature or inheritance info includes "ParentClass"
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        pass
+    
+    def test_class_with_multiple_inheritance(self):
+        """
+        GIVEN a temporary file with:
+            class MultiChild(Parent1, Parent2, Parent3):
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "MultiChild"
+            - inheritance info includes all three parent classes in order
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        pass
+    
+    def test_class_inheriting_from_builtin_types(self):
+        """
+        GIVEN a temporary file with:
+            class CustomList(list):
+                pass
+            
+            class CustomDict(dict):
+                pass
+            
+            class CustomException(Exception):
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect 3 results with appropriate inheritance from builtins
+        """
+        pass
+    
+    def test_class_with_generic_inheritance(self):
+        """
+        GIVEN a temporary file with:
+            from typing import Generic, TypeVar
+            
+            T = TypeVar('T')
+            
+            class GenericClass(Generic[T]):
+                pass
+            
+            class SpecificClass(GenericClass[str]):
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect results with:
+            - GenericClass inheriting from Generic[T]
+            - SpecificClass inheriting from GenericClass[str]
+        """
+        pass
+    
+    def test_class_with_inheritance_decorator_and_docstring(self):
+        """
+        GIVEN a temporary file with:
+            @dataclass
+            class CompleteClass(BaseClass, Interface1, Interface2):
+                \"\"\"
+                A complete class with everything.
+                
+                This demonstrates inheritance, decorators, and docstring.
+                \"\"\"
+                field1: str
+                field2: int
+        WHEN extract_function_stubs is called
+        THEN expect 1 result with:
+            - name = "CompleteClass"
+            - decorator info includes "@dataclass"
+            - inheritance info includes all three parent classes
+            - docstring contains the full multiline documentation
+            - is_async = False
+            - is_method = False
+            - class_name = None
+        """
+        pass
+    
+    def test_nested_class_inheritance(self):
+        """
+        GIVEN a temporary file with:
+            class OuterClass:
+                class InnerBase:
+                    pass
+                
+                class InnerChild(InnerBase):
+                    pass
+        WHEN extract_function_stubs is called
+        THEN expect results showing:
+            - OuterClass (no inheritance)
+            - InnerBase (no inheritance, but nested in OuterClass)
+            - InnerChild (inheriting from InnerBase, nested in OuterClass)
+        """
+        pass
+
+
+class TestClassExtractionComplexScenarios(unittest.TestCase):
+    """Test complex combinations of class features."""
+    
+    def test_abstract_class_with_decorators_and_inheritance(self):
+        """
+        GIVEN a temporary file with:
+            from abc import ABC, abstractmethod
+            
+            @dataclass
+            class AbstractBase(ABC):
+                \"\"\"Abstract base class.\"\"\"
+                
+                @abstractmethod
+                def required_method(self) -> None:
+                    \"\"\"Must be implemented by subclasses.\"\"\"
+                    pass
+        WHEN extract_function_stubs is called
+        THEN expect results for:
+            - AbstractBase class with decorator, inheritance from ABC, and docstring
+            - required_method with @abstractmethod decorator and docstring
+        """
+        pass
+    
+    def test_metaclass_usage(self):
+        """
+        GIVEN a temporary file with:
+            class MetaClass(type):
+                \"\"\"A metaclass.\"\"\"
+                pass
+            
+            class ClassWithMeta(metaclass=MetaClass):
+                \"\"\"A class using a metaclass.\"\"\"
+                pass
+        WHEN extract_function_stubs is called
+        THEN expect results showing:
+            - MetaClass inheriting from type
+            - ClassWithMeta with metaclass information
+        """
+        pass
+
+
 class TestFunctionSignatureVariations(unittest.TestCase):
     """Test various function signature patterns."""
     

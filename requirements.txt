@@ -25,3 +25,5 @@ google-auth-httplib2
 google-auth-oauthlib
 playsound3
 python-crontab # for cron job management
+transformers # for NLP models
+sentence-transformers # for sentence embeddings

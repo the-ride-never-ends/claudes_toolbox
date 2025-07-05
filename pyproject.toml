@@ -34,4 +34,6 @@ dependencies = [
     "google-auth-oauthlib>=1.2.2",
     "playsound3>=3.2.4",
     "python-crontab>=3.2.0",
+    "transformers>=4.53.1",
+    "sentence-transformers>=5.0.0",
 ]

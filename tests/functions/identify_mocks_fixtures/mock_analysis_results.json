@@ -1,0 +1,998 @@
+{
+    "base_directory": "/home/kylerose1946/claudes_toolbox/claudes_toolbox/tests/functions/identify_mocks_fixtures",
+    "files_with_potential_mocks": [
+        "enhanced_ipfs_cluster_tools.py",
+        "_test_mcp_server_integration.py",
+        "index_management_tools.py",
+        "security.py",
+        "cross_document_reasoning.py",
+        "rag_query_optimizer.py",
+        "llm_reasoning_tracer.py",
+        "qdrant_store.py"
+    ],
+    "num_files_with_potential_mocks": 8,
+    "num_functions_with_potential_mocks": 31,
+    "num_classes_with_potential_mocks": 16,
+    "mock_percentage": 17.472118959107807,
+    "patterns_found": [
+        "demo",
+        "demonstration",
+        "example",
+        "implement",
+        "mock",
+        "placeholder",
+        "sample",
+        "temp",
+        "test",
+        "testing",
+        "todo"
+    ],
+    "summaries": {
+        "enhanced_ipfs_cluster_tools.py": {
+            "mock_percentage": 11.76470588235294,
+            "confidence_scores": {
+                "MockIPFSClusterService": 1.0,
+                "execute": 0.7
+            },
+            "patterns_found": [
+                "example",
+                "mock",
+                "test",
+                "testing"
+            ],
+            "file_metrics": {
+                "total_lines": 572,
+                "code_lines": 330,
+                "comment_lines": 13,
+                "docstring_lines": 158
+            },
+            "mocks": [
+                {
+                    "name": "MockIPFSClusterService",
+                    "line_numbers": [
+                        13,
+                        106
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'mock' in Name",
+                        "'mock' in (docstring)",
+                        "'test' in (docstring)",
+                        "'testing' in (docstring)",
+                        "'mock' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "execute",
+                    "line_numbers": [
+                        477,
+                        567
+                    ],
+                    "confidence": 0.7,
+                    "reasons": [
+                        "'mock' in (comment)",
+                        "'mock' in (string)",
+                        "'example' in (string)",
+                        "'example' in (string)"
+                    ],
+                    "type": "method"
+                }
+            ]
+        },
+        "_test_mcp_server_integration.py": {
+            "mock_percentage": 65.21739130434783,
+            "confidence_scores": {
+                "TestMCPServerSetup": 1.0,
+                "test_mcp_tools_registration": 1.0,
+                "test_tool_schemas": 0.8000000000000002,
+                "TestMCPToolExecution": 1.0,
+                "test_mcp_server_tool_execution": 1.0,
+                "test_concurrent_mcp_requests": 1.0,
+                "TestMCPServerErrorHandling": 1.0,
+                "test_tool_timeout_handling": 1.0,
+                "test_resource_exhaustion_handling": 1.0,
+                "TestMCPServerPerformance": 0.9500000000000001,
+                "test_request_response_time": 1.0,
+                "test_memory_usage_tracking": 0.8500000000000001,
+                "TestMCPToolInteroperability": 1.0,
+                "test_tool_chain_execution": 1.0,
+                "test_cross_tool_data_sharing": 1.0
+            },
+            "patterns_found": [
+                "mock",
+                "test",
+                "testing"
+            ],
+            "file_metrics": {
+                "total_lines": 451,
+                "code_lines": 173,
+                "comment_lines": 23,
+                "docstring_lines": 167
+            },
+            "mocks": [
+                {
+                    "name": "TestMCPServerSetup",
+                    "line_numbers": [
+                        31,
+                        67
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "test_mcp_tools_registration",
+                    "line_numbers": [
+                        34,
+                        60
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (comment)",
+                        "'test' in (string)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "test_tool_schemas",
+                    "line_numbers": [
+                        62,
+                        67
+                    ],
+                    "confidence": 0.8000000000000002,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'test' in (comment)",
+                        "'test' in (string)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "TestMCPToolExecution",
+                    "line_numbers": [
+                        75,
+                        168
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (comment)",
+                        "'testing' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "test_mcp_server_tool_execution",
+                    "line_numbers": [
+                        80,
+                        125
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (comment)",
+                        "'testing' in (comment)",
+                        "'test' in (string)",
+                        "'test' in (string)",
+                        "'test' in (string)",
+                        "'test' in (string)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "test_concurrent_mcp_requests",
+                    "line_numbers": [
+                        128,
+                        168
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (string)",
+                        "'test' in (string)",
+                        "'test' in (string)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "TestMCPServerErrorHandling",
+                    "line_numbers": [
+                        171,
+                        256
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "test_tool_timeout_handling",
+                    "line_numbers": [
+                        199,
+                        233
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (comment)",
+                        "'test' in (string)",
+                        "'test' in (string)",
+                        "'test' in (string)",
+                        "'pass'"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "test_resource_exhaustion_handling",
+                    "line_numbers": [
+                        236,
+                        256
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (string)",
+                        "'mock' in (string)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "TestMCPServerPerformance",
+                    "line_numbers": [
+                        259,
+                        322
+                    ],
+                    "confidence": 0.9500000000000001,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'mock' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "test_request_response_time",
+                    "line_numbers": [
+                        263,
+                        294
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (string)",
+                        "'test' in (string)",
+                        "'test' in (string)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "test_memory_usage_tracking",
+                    "line_numbers": [
+                        297,
+                        322
+                    ],
+                    "confidence": 0.8500000000000001,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'test' in (string)",
+                        "'mock' in (string)",
+                        "'test' in (string)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "TestMCPToolInteroperability",
+                    "line_numbers": [
+                        325,
+                        446
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "test_tool_chain_execution",
+                    "line_numbers": [
+                        329,
+                        381
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'test' in (string)",
+                        "'test' in (string)",
+                        "'test' in (string)",
+                        "'test' in (string)",
+                        "'test' in (string)",
+                        "'test' in (string)",
+                        "'testing' in (string)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "test_cross_tool_data_sharing",
+                    "line_numbers": [
+                        384,
+                        446
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in Name",
+                        "'test' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (comment)",
+                        "'test' in (string)",
+                        "'test' in (string)",
+                        "'test' in (string)"
+                    ],
+                    "type": "method"
+                }
+            ]
+        },
+        "index_management_tools.py": {
+            "mock_percentage": 6.25,
+            "confidence_scores": {
+                "MockIndexManager": 0.8
+            },
+            "patterns_found": [
+                "mock",
+                "test"
+            ],
+            "file_metrics": {
+                "total_lines": 847,
+                "code_lines": 79,
+                "comment_lines": 2,
+                "docstring_lines": 649
+            },
+            "mocks": [
+                {
+                    "name": "MockIndexManager",
+                    "line_numbers": [
+                        53,
+                        115
+                    ],
+                    "confidence": 0.8,
+                    "reasons": [
+                        "'mock' in Name",
+                        "'mock' in (docstring)"
+                    ],
+                    "type": "class"
+                }
+            ]
+        },
+        "security.py": {
+            "mock_percentage": 5.714285714285714,
+            "confidence_scores": {
+                "SecurityManager": 1.0,
+                "_load_encryption_keys": 1.0,
+                "_save_encryption_keys": 1.0,
+                "delegate_encryption_capability": 0.95
+            },
+            "patterns_found": [
+                "demo",
+                "demonstration",
+                "example",
+                "implement"
+            ],
+            "file_metrics": {
+                "total_lines": 3542,
+                "code_lines": 779,
+                "comment_lines": 48,
+                "docstring_lines": 2124
+            },
+            "mocks": [
+                {
+                    "name": "SecurityManager",
+                    "line_numbers": [
+                        229,
+                        3271
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'demonstration' in (comment)",
+                        "'demo' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "_load_encryption_keys",
+                    "line_numbers": [
+                        375,
+                        398
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'demonstration' in (comment)",
+                        "'demo' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "_save_encryption_keys",
+                    "line_numbers": [
+                        400,
+                        422
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'demonstration' in (comment)",
+                        "'demo' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "delegate_encryption_capability",
+                    "line_numbers": [
+                        2369,
+                        2464
+                    ],
+                    "confidence": 0.95,
+                    "reasons": [
+                        "'example' in (docstring)",
+                        "'implement' in (docstring)",
+                        "'example' in (string)",
+                        "'implement' in (string)"
+                    ],
+                    "type": "method"
+                }
+            ]
+        },
+        "cross_document_reasoning.py": {
+            "mock_percentage": 31.25,
+            "confidence_scores": {
+                "CrossDocumentReasoner": 1.0,
+                "_find_entity_connections": 0.85,
+                "_determine_relation": 1.0,
+                "_synthesize_answer": 1.0,
+                "example_usage": 1.0
+            },
+            "patterns_found": [
+                "example",
+                "implement",
+                "mock",
+                "placeholder",
+                "sample",
+                "test",
+                "testing",
+                "todo"
+            ],
+            "file_metrics": {
+                "total_lines": 812,
+                "code_lines": 415,
+                "comment_lines": 66,
+                "docstring_lines": 212
+            },
+            "mocks": [
+                {
+                    "name": "CrossDocumentReasoner",
+                    "line_numbers": [
+                        91,
+                        732
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'implement' in (docstring)",
+                        "'mock' in (comment)",
+                        "'placeholder' in (comment)",
+                        "'example' in (comment)",
+                        "'implement' in (comment)",
+                        "'todo' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "_find_entity_connections",
+                    "line_numbers": [
+                        420,
+                        511
+                    ],
+                    "confidence": 0.85,
+                    "reasons": [
+                        "'example' in (comment)",
+                        "'implement' in (comment)",
+                        "'todo' in (comment)",
+                        "'pass'"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "_determine_relation",
+                    "line_numbers": [
+                        513,
+                        572
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'placeholder' in (comment)",
+                        "'implement' in (comment)",
+                        "'todo' in (comment)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "_synthesize_answer",
+                    "line_numbers": [
+                        634,
+                        692
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'mock' in (comment)",
+                        "'implement' in (comment)",
+                        "'todo' in (comment)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "example_usage",
+                    "line_numbers": [
+                        735,
+                        807
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'example' in Name",
+                        "'example' in (docstring)",
+                        "'sample' in (comment)",
+                        "'test' in (comment)",
+                        "'testing' in (comment)",
+                        "'example' in (string)"
+                    ],
+                    "type": "function"
+                }
+            ]
+        },
+        "rag_query_optimizer.py": {
+            "mock_percentage": 16.417910447761194,
+            "confidence_scores": {
+                "QueryMetricsCollector": 1.0,
+                "_learn_from_query_statistics": 1.0,
+                "_extract_query_patterns": 1.0,
+                "optimize_query": 1.0,
+                "_check_learning_cycle": 1.0,
+                "example_usage": 1.0,
+                "UnifiedGraphRAGQueryOptimizer": 1.0,
+                "process_results": 1.0,
+                "GraphRAGProcessor": 1.0,
+                "process_query": 1.0,
+                "query": 1.0
+            },
+            "patterns_found": [
+                "demo",
+                "demonstration",
+                "example",
+                "implement",
+                "mock",
+                "placeholder",
+                "sample",
+                "temp",
+                "test",
+                "testing"
+            ],
+            "file_metrics": {
+                "total_lines": 3670,
+                "code_lines": 693,
+                "comment_lines": 85,
+                "docstring_lines": 2334
+            },
+            "mocks": [
+                {
+                    "name": "QueryMetricsCollector",
+                    "line_numbers": [
+                        121,
+                        3298
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'mock' in (comment)",
+                        "'placeholder' in (comment)",
+                        "'sample' in (comment)",
+                        "'test' in (comment)",
+                        "'temp' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "_learn_from_query_statistics",
+                    "line_numbers": [
+                        891,
+                        1433
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'implement' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (comment)",
+                        "'temp' in (comment)",
+                        "'implement' in (string)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "_extract_query_patterns",
+                    "line_numbers": [
+                        1519,
+                        1873
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'pass'",
+                        "'pass'",
+                        "'sample' in (string)",
+                        "'pass'",
+                        "'pass'",
+                        "'sample' in (string)",
+                        "'pass'",
+                        "'sample' in (string)",
+                        "'pass'",
+                        "'pass'",
+                        "'sample' in (string)",
+                        "'pass'",
+                        "'pass'",
+                        "'pass'",
+                        "'pass'",
+                        "'pass'",
+                        "'pass'",
+                        "'pass'",
+                        "'pass'"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "_check_learning_cycle",
+                    "line_numbers": [
+                        2632,
+                        2827
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'implement' in (docstring)",
+                        "'temp' in (comment)",
+                        "'implement' in (string)",
+                        "'pass'",
+                        "'pass'",
+                        "'pass'",
+                        "'pass'",
+                        "'pass'",
+                        "'pass'"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "example_usage",
+                    "line_numbers": [
+                        3425,
+                        3549
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'example' in Name",
+                        "'example' in (docstring)",
+                        "'mock' in (comment)",
+                        "'demonstration' in (comment)",
+                        "'sample' in (comment)",
+                        "'example' in (comment)",
+                        "'demo' in (comment)",
+                        "'implement' in (comment)",
+                        "'example' in (string)",
+                        "'example' in (string)",
+                        "'mock' in (string)"
+                    ],
+                    "type": "function"
+                },
+                {
+                    "name": "UnifiedGraphRAGQueryOptimizer",
+                    "line_numbers": [
+                        3554,
+                        3575
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'mock' in (comment)",
+                        "'test' in (comment)",
+                        "'testing' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "optimize_query",
+                    "line_numbers": [
+                        3560,
+                        3568
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'mock' in (comment)",
+                        "'test' in (comment)",
+                        "'testing' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "process_results",
+                    "line_numbers": [
+                        3570,
+                        3575
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'mock' in (comment)",
+                        "'test' in (comment)",
+                        "'testing' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "GraphRAGProcessor",
+                    "line_numbers": [
+                        3577,
+                        3669
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'test' in (docstring)",
+                        "'testing' in (docstring)",
+                        "'mock' in (comment)",
+                        "'test' in (comment)",
+                        "'testing' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "process_query",
+                    "line_numbers": [
+                        3588,
+                        3609
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'mock' in (comment)",
+                        "'test' in (comment)",
+                        "'testing' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "query",
+                    "line_numbers": [
+                        3630,
+                        3669
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'mock' in (comment)",
+                        "'test' in (comment)",
+                        "'testing' in (comment)",
+                        "'implement' in (comment)",
+                        "'sample' in (string)",
+                        "'sample' in (string)",
+                        "'test' in (string)"
+                    ],
+                    "type": "method"
+                }
+            ]
+        },
+        "llm_reasoning_tracer.py": {
+            "mock_percentage": 16.27906976744186,
+            "confidence_scores": {
+                "ReasoningTrace": 1.0,
+                "get_explanation": 1.0,
+                "LLMReasoningTracer": 1.0,
+                "create_example_trace": 1.0,
+                "WikipediaKnowledgeGraphTracer": 0.8999999999999999,
+                "_get_html_visualization": 0.8999999999999999
+            },
+            "patterns_found": [
+                "demo",
+                "demonstration",
+                "example",
+                "implement",
+                "mock",
+                "temp"
+            ],
+            "file_metrics": {
+                "total_lines": 1652,
+                "code_lines": 619,
+                "comment_lines": 54,
+                "docstring_lines": 709
+            },
+            "mocks": [
+                {
+                    "name": "ReasoningTrace",
+                    "line_numbers": [
+                        74,
+                        300
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'mock' in (comment)",
+                        "'temp' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "get_explanation",
+                    "line_numbers": [
+                        229,
+                        300
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'mock' in (comment)",
+                        "'temp' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "LLMReasoningTracer",
+                    "line_numbers": [
+                        303,
+                        822
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'mock' in (docstring)",
+                        "'implement' in (docstring)",
+                        "'mock' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "__init__",
+                    "line_numbers": [
+                        311,
+                        336
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'mock' in (docstring)",
+                        "'mock' in (comment)",
+                        "'implement' in (comment)",
+                        "'mock' in (string)",
+                        "'mock' in (string)",
+                        "'mock' in (string)",
+                        "'mock' in (string)",
+                        "'implement' in (string)"
+                    ],
+                    "type": "method"
+                },
+                {
+                    "name": "create_example_trace",
+                    "line_numbers": [
+                        826,
+                        940
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'example' in Name",
+                        "'demonstration' in (docstring)",
+                        "'example' in (docstring)",
+                        "'demo' in (docstring)",
+                        "'demonstration' in (string)",
+                        "'example' in (string)",
+                        "'demo' in (string)"
+                    ],
+                    "type": "function"
+                },
+                {
+                    "name": "WikipediaKnowledgeGraphTracer",
+                    "line_numbers": [
+                        943,
+                        1582
+                    ],
+                    "confidence": 0.8999999999999999,
+                    "reasons": [
+                        "'mock' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "_get_html_visualization",
+                    "line_numbers": [
+                        1504,
+                        1557
+                    ],
+                    "confidence": 0.8999999999999999,
+                    "reasons": [
+                        "'mock' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "method"
+                }
+            ]
+        },
+        "qdrant_store.py": {
+            "mock_percentage": 11.76470588235294,
+            "confidence_scores": {
+                "QdrantVectorStore": 1.0,
+                "load_qdrant_iter": 0.8999999999999999
+            },
+            "patterns_found": [
+                "implement",
+                "mock",
+                "placeholder"
+            ],
+            "file_metrics": {
+                "total_lines": 484,
+                "code_lines": 267,
+                "comment_lines": 9,
+                "docstring_lines": 119
+            },
+            "mocks": [
+                {
+                    "name": "QdrantVectorStore",
+                    "line_numbers": [
+                        65,
+                        473
+                    ],
+                    "confidence": 1.0,
+                    "reasons": [
+                        "'implement' in (docstring)",
+                        "'placeholder' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "class"
+                },
+                {
+                    "name": "load_qdrant_iter",
+                    "line_numbers": [
+                        459,
+                        473
+                    ],
+                    "confidence": 0.8999999999999999,
+                    "reasons": [
+                        "'placeholder' in (comment)",
+                        "'implement' in (comment)"
+                    ],
+                    "type": "method"
+                }
+            ]
+        }
+    }
+}

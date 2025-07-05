@@ -37,7 +37,7 @@ def get_function_tools_from_files(mcp: FastMCP) -> None:
                 #mcp_logger.debug(f"Checking item '{name}' in module '{module_name}'")
 
                 # Skip imports.
-                # We check this by making the name of the file the same as the function name
+                    # We check this by making the name of the file the same as the function name
                 if name not in module_name:
                     continue
 

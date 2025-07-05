@@ -2,7 +2,6 @@
 # Import core utility functions
 from .install_tool_dependencies_to_shared_venv import install_tool_dependencies_to_shared_venv
 from .mcp_print import mcp_print
-from .common_.turn_argparse_help_into_docstring import turn_argparse_help_into_docstring
 
 # Import from readme subdirectory
 from .readme.update_readme_when_settings_are_changed import _update, _format_config_json, update_readme_when_settings_are_changed
@@ -15,7 +14,7 @@ __all__ = [
     "update_readme_when_settings_are_changed",
     "install_tool_dependencies_to_shared_venv",
     "mcp_print",
-    "turn_argparse_help_into_docstring",
+    #"turn_argparse_help_into_docstring",
     # Readme utilities
     "_update",
     "_format_config_json",
