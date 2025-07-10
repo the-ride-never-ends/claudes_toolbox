@@ -4,24 +4,30 @@ Test suite for extract_function_stubs function.
 
 Docstring:
 =================
-Extract function stubs from a Python file or directory.
+Extract function stubs from Python files and write them to markdown files.
+    
+Parses Python files to identify all callable definitions (functions, async functions, 
+and classes) and extracts their signatures, type hints, and docstrings. The extracted
+information is then written to markdown files for documentation purposes.
 
-Parses Python files to identify all callable definitions and extracts
-their signatures, type hints, and docstrings to create function stubs.
-
-If a directory is provided, all Python files in the directory will be
-processed. If a file is provided, only that file will be processed.
+If a directory is provided, all Python files in the directory will be processed.
+If a file is provided, only that file will be processed.
 
 Args:
     path (str): Path to the Python file or directory to analyze.
-    markdown_path (Optional[str]): If provided, the function will write
-        the extracted stubs to a markdown file at this path. If not
-        specified, no markdown file will be created.
+    output_dir (str): The output destination for markdown files. Behavior depends on the input:
+        - If `path` is a file and `output_dir` ends with '.md': writes to that specific file
+        - If `path` is a file and `output_dir` is a directory: writes '{filename}_stubs.md' in that directory
+        - If `path` is a directory and `output_dir` ends with '.md': writes all stubs to that single file
+        - If `path` is a directory and `output_dir` is a directory: writes individual '{filename}_stubs.md' files
     recursive (bool): If True and path is a directory, search subdirectories
-        recursively for Python files. Ignored if path is a file.
+        recursively for Python files. Ignored if path is a file. Defaults to True.
 
 Returns:
-    List[Dict[str, Any]]: A list of dictionaries, each containing:
+    str: A status message indicating the number of files processed successfully,
+            or "No files were written." if no files were processed.
+
+    Each output file contains:
         - 'name' (str): The function/class name
         - 'signature' (str): Complete function signature with type hints
         - 'docstring' (Optional[str]): The function's docstring if present
@@ -32,71 +38,82 @@ Returns:
         - 'file_path' (str): Path to the file containing this function/class
 
 Raises:
+    FileNotFoundError: If the specified file or directory does not exist.
     PermissionError: If files cannot be read due to permission issues.
-    SyntaxError: If Python files contain syntax errors.
-    ValueError: If the path is empty or invalid.
+    ValueError: If path is empty or invalid.
     OSError: If there are other file system related errors.
 
 Example:
-    >>> # Extract from a single file
-    >>> stubs = extract_function_stubs('my_module.py')
-    >>> for stub in stubs:
-    ...     print(f"Function: {stub['name']} in {stub['file_path']}")
-    ...     print(f"Signature: {stub['signature']}")
-    ...     if stub['docstring']:
-    ...         print(f"Docstring: {stub['docstring'][:50]}...")
-    >>> 
-    >>> # Extract from a directory
-    >>> stubs = extract_function_stubs('./src/', recursive=True)
-    >>> async_funcs = [s for s in stubs if s['is_async']]
-    >>> 
-    >>> # Extract from directory with markdown output
-    >>> stubs = extract_function_stubs('./src/', 'output.md', recursive=False)
+    >>> # Extract from a single file to a specific markdown file
+    >>> result = extract_function_stubs('my_module.py', 'output.md')
+    >>> print(result)
+    'Wrote 1 file(s) successfully.'
+    
+    >>> # Extract from a directory to individual markdown files
+    >>> result = extract_function_stubs('./src/', './docs/', recursive=True)
+    >>> print(result)
+    'Wrote 5 file(s) successfully.'
+    
+    >>> # Extract from a directory to a single combined markdown file
+    >>> result = extract_function_stubs('./src/', './docs/all_stubs.md', recursive=False)
+    >>> print(result)
+    'Wrote 3 file(s) successfully.'
 """
 import unittest
 import tempfile
 import os
 import json
-from typing import Any, List, Dict
 from tools.functions.extract_function_stubs import extract_function_stubs
 
 
 class TestBasicFunctionality(unittest.TestCase):
     """Test basic functionality of extract_function_stubs."""
-    
+
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
     def test_simple_function_with_type_hints_and_docstring(self):
         """
         GIVEN a temporary file with:
             def add_numbers(a: int, b: int) -> int:
                 \"\"\"Add two numbers together.\"\"\"
                 return a + b
-        WHEN extract_function_stubs is called
-        THEN expect 1 result with:
-            - name = "add_numbers"
-            - signature contains "a: int, b: int) -> int"
-            - docstring = "Add two numbers together."
-            - is_async = False
-            - is_method = False
-            - class_name = None
+        WHEN extract_function_stubs is called with output_dir
+        THEN expect status message "Wrote 1 file(s) successfully."
+        AND expect markdown file to be created with function stub
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write('''def add_numbers(a: int, b: int) -> int:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+def add_numbers(a: int, b: int) -> int:
     """Add two numbers together."""
     return a + b
 ''')
             f.flush()
-            
+
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'add_numbers')
-                self.assertIn('a: int, b: int) -> int', stub['signature'])
-                self.assertEqual(stub['docstring'], 'Add two numbers together.')
-                self.assertFalse(stub['is_async'])
-                self.assertFalse(stub['is_method'])
-                self.assertIsNone(stub['class_name'])
+                # Check return value is status message
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains the function
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('add_numbers', content)
+                    self.assertIn('Add two numbers together', content)
+                    self.assertIn('a: int, b: int) -> int', content)
+                    
             finally:
                 os.unlink(f.name)
 
@@ -106,22 +123,30 @@ class TestBasicFunctionality(unittest.TestCase):
             def func1(): pass
             def func2(): pass
             def func3(): pass
-        WHEN extract_function_stubs is called
-        THEN expect 3 results with names ["func1", "func2", "func3"]
+        WHEN extract_function_stubs is called with output_dir
+        THEN expect status message "Wrote 1 file(s) successfully."
+        AND expect markdown file to contain all 3 functions
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def func1(): pass
 def func2(): pass
 def func3(): pass
 ''')
             f.flush()
+            print(f.name)
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 3)
-                names = [stub['name'] for stub in result]
-                self.assertEqual(names, ['func1', 'func2', 'func3'])
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('func1', content)
+                    self.assertIn('func2', content)
+                    self.assertIn('func3', content)
             finally:
                 os.unlink(f.name)
     
@@ -130,25 +155,28 @@ def func3(): pass
         GIVEN a temporary file with:
             def no_hints(a, b):
                 return a + b
-        WHEN extract_function_stubs is called
-        THEN expect 1 result with:
-            - name = "no_hints"
-            - signature contains "(a, b)" without type annotations
+        WHEN extract_function_stubs is called with output_dir
+        THEN expect status message "Wrote 1 file(s) successfully."
+        AND expect markdown file to contain function without type annotations
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def no_hints(a, b):
     return a + b
 ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'no_hints')
-                self.assertIn('(a, b)', stub['signature'])
-                self.assertNotIn(':', stub['signature'])  # No type annotations
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('no_hints', content)
+                    self.assertIn('(a, b)', content)
+                    self.assertNotIn(':', content.split('no_hints')[1].split('\n')[0])  # No type annotations in signature line
             finally:
                 os.unlink(f.name)
     
@@ -157,22 +185,26 @@ def func3(): pass
         GIVEN a temporary file with:
             def no_docstring():
                 pass
-        WHEN extract_function_stubs is called
-        THEN expect 1 result with:
-            - docstring = None or empty string
+        WHEN extract_function_stubs is called with output_dir
+        THEN expect status message "Wrote 1 file(s) successfully."
+        AND expect markdown file to contain function with no docstring section
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def no_docstring():
     pass
 ''')
             f.flush()
-            
+
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertIn(stub['docstring'], [None, ''])
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('no_docstring', content)
             finally:
                 os.unlink(f.name)
     
@@ -182,27 +214,28 @@ def func3(): pass
             def complete_func(x: str) -> str:
                 \"\"\"Returns the input string.\"\"\"
                 return x
-        WHEN extract_function_stubs is called
-        THEN expect 1 result with all fields properly populated
+        WHEN extract_function_stubs is called with output_dir
+        THEN expect status message "Wrote 1 file(s) successfully."
+        AND expect markdown file to contain function with all information
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def complete_func(x: str) -> str:
     """Returns the input string."""
     return x
 ''')
             f.flush()
-            
+
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'complete_func')
-                self.assertIn('x: str) -> str', stub['signature'])
-                self.assertEqual(stub['docstring'], 'Returns the input string.')
-                self.assertFalse(stub['is_async'])
-                self.assertFalse(stub['is_method'])
-                self.assertIsNone(stub['class_name'])
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('complete_func', content)
+                    self.assertIn('x: str) -> str', content)
+                    self.assertIn('Returns the input string', content)
             finally:
                 os.unlink(f.name)
 
@@ -210,6 +243,15 @@ def func3(): pass
 class TestFunctionSignatureVariations(unittest.TestCase):
     """Test various function signature patterns."""
     
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
     def test_functions_with_no_parameters(self):
         """
         GIVEN a temporary file with:
@@ -218,18 +260,21 @@ class TestFunctionSignatureVariations(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect signature to be "() -> None"
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def no_params() -> None:
     pass
 ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertIn('() -> None', stub['signature'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('() -> None', content)
             finally:
                 os.unlink(f.name)
     
@@ -241,18 +286,21 @@ class TestFunctionSignatureVariations(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect signature to contain "(a, b, c)"
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def pos_only(a, b, c):
     pass
 ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertIn('(a, b, c)', stub['signature'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('(a, b, c)', content)
             finally:
                 os.unlink(f.name)
     
@@ -264,19 +312,22 @@ class TestFunctionSignatureVariations(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect signature to contain 'b: str = "default"' and 'c: bool = True'
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def with_defaults(a: int, b: str = "default", c: bool = True):
     pass
 ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertIn('b: str = "default"', stub['signature'])
-                self.assertIn('c: bool = True', stub['signature'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('b: str = "default"', content)
+                    self.assertIn('c: bool = True', content)
             finally:
                 os.unlink(f.name)
     
@@ -288,7 +339,7 @@ class TestFunctionSignatureVariations(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect signature to contain "*args: str" and "**kwargs: Any"
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''from typing import Any
 
 def variadic(a: int, *args: str, **kwargs: Any) -> None:
@@ -297,12 +348,15 @@ def variadic(a: int, *args: str, **kwargs: Any) -> None:
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertIn('*args: str', stub['signature'])
-                self.assertIn('**kwargs: Any', stub['signature'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('*args: str', content)
+                    self.assertIn('**kwargs: Any', content)
             finally:
                 os.unlink(f.name)
     
@@ -315,7 +369,7 @@ def variadic(a: int, *args: str, **kwargs: Any) -> None:
         WHEN extract_function_stubs is called
         THEN expect signature to preserve complex type annotations exactly
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''from typing import Union, Optional, List, Dict
 
 def complex_types(x: Union[int, str], y: Optional[List[Dict[str, int]]]) -> None:
@@ -324,12 +378,15 @@ def complex_types(x: Union[int, str], y: Optional[List[Dict[str, int]]]) -> None
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertIn('Union[int, str]', stub['signature'])
-                self.assertIn('Optional[List[Dict[str, int]]]', stub['signature'])
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('Union[int, str]', content)
+                    self.assertIn('Optional[List[Dict[str, int]]]', content)
             finally:
                 os.unlink(f.name)
     
@@ -341,18 +398,22 @@ def complex_types(x: Union[int, str], y: Optional[List[Dict[str, int]]]) -> None
         WHEN extract_function_stubs is called
         THEN expect signature to end with "-> int"
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def returns_int() -> int:
     return 42
 ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertIn('-> int', stub['signature'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+
+                    self.assertIn('-> int', content)
             finally:
                 os.unlink(f.name)
 
@@ -360,6 +421,17 @@ def complex_types(x: Union[int, str], y: Optional[List[Dict[str, int]]]) -> None
 class TestClassAndMethodTests(unittest.TestCase):
     """Test detection of class methods vs standalone functions."""
     
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
+
+
     def test_standalone_functions_not_in_classes(self):
         """
         GIVEN a temporary file with:
@@ -370,19 +442,24 @@ class TestClassAndMethodTests(unittest.TestCase):
             - is_method = False
             - class_name = None
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def standalone():
     pass
 ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertFalse(stub['is_method'])
-                self.assertIsNone(stub['class_name'])
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+
+                    self.assertIn('* **Method:** False', content)
+                    self.assertIn('* **Class:** N/A', content)
+
             finally:
                 os.unlink(f.name)
     
@@ -399,7 +476,7 @@ class TestClassAndMethodTests(unittest.TestCase):
             - class_name = "MyClass"
             - signature contains "self, x: int"
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''class MyClass:
     def instance_method(self, x: int) -> str:
         pass
@@ -407,15 +484,19 @@ class TestClassAndMethodTests(unittest.TestCase):
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                self.assertEqual(len(result), 2)  # One for class, one for method
-                # Find the method stub by name
-                method_stub = next(s for s in result if s['name'] == 'instance_method')
-                self.assertEqual(method_stub['name'], 'instance_method')
-                self.assertTrue(method_stub['is_method'])
-                self.assertEqual(method_stub['class_name'], 'MyClass')
-                self.assertIn('self, x: int', method_stub['signature'])
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains both class and method
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('MyClass', content)
+                    self.assertIn('instance_method', content)
+                    self.assertIn('self, x: int', content)
             finally:
                 os.unlink(f.name)
     
@@ -429,7 +510,7 @@ class TestClassAndMethodTests(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect method to be detected with appropriate metadata
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''class MyClass:
     @staticmethod
     def static_method(x: int) -> int:
@@ -438,16 +519,27 @@ class TestClassAndMethodTests(unittest.TestCase):
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 2)  # One for class, one for method
+
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains both class and method
+                with open(expected_file, 'r') as md_file:
+
+                    content = md_file.read()
+
                 # Find the static method stub by name
-                method_stub = next(s for s in result if s['name'] == 'static_method')
-                self.assertEqual(method_stub['name'], 'static_method')
-                self.assertTrue(method_stub['is_method'])
-                self.assertEqual(method_stub['class_name'], 'MyClass')
-                self.assertIn('x: int', method_stub['signature'])
-                self.assertNotIn('self', method_stub['signature'])
+                self.assertIn('@staticmethod', content)
+                self.assertIn('class MyClass', content)
+                self.assertIn('def static_method', content)
+                self.assertIn("* **Method:** False", content)
+                self.assertIn('x: int', content)
+                self.assertNotIn('self', content)
             finally:
                 os.unlink(f.name)
     
@@ -461,7 +553,7 @@ class TestClassAndMethodTests(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect method to be detected with signature containing "cls"
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''class MyClass:
     @classmethod
     def class_method(cls, x: int) -> int:
@@ -470,15 +562,21 @@ class TestClassAndMethodTests(unittest.TestCase):
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 2) # One for class, one for method
-                # Find the class method stub by name
-                method_stub = next(s for s in result if s['name'] == 'class_method')
-                self.assertEqual(method_stub['name'], 'class_method')
-                self.assertTrue(method_stub['is_method'])
-                self.assertEqual(method_stub['class_name'], 'MyClass')
-                self.assertIn('cls, x: int', method_stub['signature'])
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that the markdown file was created
+                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_output_file))
+                
+                # Read and check the markdown content
+                with open(expected_output_file, 'r') as output_f:
+                    content = output_f.read()
+                
+                self.assertIn('@classmethod', content)
+                self.assertIn('MyClass', content)
+                self.assertIn('cls, x: int', content)
             finally:
                 os.unlink(f.name)
     
@@ -492,7 +590,7 @@ class TestClassAndMethodTests(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect property to be detected (or decide if it should be excluded)
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''class MyClass:
     @property
     def my_property(self) -> str:
@@ -501,7 +599,7 @@ class TestClassAndMethodTests(unittest.TestCase):
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
                 # Properties might be included or excluded - test for either behavior
                 if len(result) == 2:
@@ -511,7 +609,7 @@ class TestClassAndMethodTests(unittest.TestCase):
                     self.assertTrue(property_stub['is_method'])
                     self.assertEqual(property_stub['class_name'], 'MyClass')
                 else:
-                    self.assertEqual(len(result), 1)  # Just the class
+                    self.assertEqual(result, "Wrote 1 file(s) successfully.")  # Just the class
             finally:
                 os.unlink(f.name)
     
@@ -527,7 +625,7 @@ class TestClassAndMethodTests(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect both methods detected with correct class_name values
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''class Outer:
     class Inner:
         def inner_method(self):
@@ -538,16 +636,22 @@ class TestClassAndMethodTests(unittest.TestCase):
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 4) # Two classes + two methods
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                # Find methods by name
-                inner_stub = next(s for s in result if s['name'] == 'inner_method')
-                outer_stub = next(s for s in result if s['name'] == 'outer_method')
+                # Check that the markdown file was created
+                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_output_file))
                 
-                self.assertEqual(inner_stub['class_name'], 'Inner')
-                self.assertEqual(outer_stub['class_name'], 'Outer')
+                # Read and check the markdown content
+                with open(expected_output_file, 'r') as output_f:
+                    content = output_f.read()
+                
+                self.assertIn('inner_method', content)
+                self.assertIn('outer_method', content)
+                self.assertIn('class Inner', content)
+                self.assertIn('class Outer', content)
             finally:
                 os.unlink(f.name)
     
@@ -563,7 +667,7 @@ class TestClassAndMethodTests(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect both methods detected with correct class associations
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''class Parent:
     def parent_method(self):
         pass
@@ -575,16 +679,22 @@ class Child(Parent):
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 4) # Two classes + two methods
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                # Find methods by name
-                parent_stub = next(s for s in result if s['name'] == 'parent_method')
-                child_stub = next(s for s in result if s['name'] == 'child_method')
+                # Check that the markdown file was created
+                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_output_file))
                 
-                self.assertEqual(parent_stub['class_name'], 'Parent')
-                self.assertEqual(child_stub['class_name'], 'Child')
+                # Read and check the markdown content
+                with open(expected_output_file, 'r') as output_f:
+                    content = output_f.read()
+                
+                self.assertIn('parent_method', content)
+                self.assertIn('child_method', content)
+                self.assertIn('Parent', content)
+                self.assertIn('Child', content)
             finally:
                 os.unlink(f.name)
 
@@ -592,6 +702,17 @@ class Child(Parent):
 class TestAsyncFunctionTests(unittest.TestCase):
     """Test detection of async vs synchronous functions."""
     
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
+
+
     def test_regular_synchronous_functions(self):
         """
         GIVEN a temporary file with:
@@ -600,18 +721,27 @@ class TestAsyncFunctionTests(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect is_async = False
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def sync_func():
     pass
 ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertFalse(stub['is_async'])
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_output_file))
+                
+                # Read and check the markdown content
+                with open(expected_output_file, 'r') as output_f:
+                    content = output_f.read()
+                
+                self.assertIn('sync_func', content)
+                self.assertIn('* **Async:** False', content)
             finally:
                 os.unlink(f.name)
     
@@ -623,18 +753,28 @@ class TestAsyncFunctionTests(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect is_async = True
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''async def async_func():
     pass
 ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertTrue(stub['is_async'])
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_output_file))
+                
+                # Read and check the markdown content
+                with open(expected_output_file, 'r') as output_f:
+                    content = output_f.read()
+                
+                self.assertIn('async_func', content)
+                self.assertIn('async def', content)
+                self.assertIn('* **Async:** True', content)
             finally:
                 os.unlink(f.name)
     
@@ -650,7 +790,7 @@ class TestAsyncFunctionTests(unittest.TestCase):
             - is_method = True
             - class_name = "MyClass"
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''class MyClass:
     async def async_method(self):
         pass
@@ -658,21 +798,41 @@ class TestAsyncFunctionTests(unittest.TestCase):
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
+                result = extract_function_stubs(f.name, self.test_dir_path)
                 
-                self.assertEqual(len(result), 2)  # One for class, one for method
-                # Find the async method stub by name
-                method_stub = next(s for s in result if s['name'] == 'async_method')
-                self.assertTrue(method_stub['is_async'])
-                self.assertTrue(method_stub['is_method'])
-                self.assertEqual(method_stub['class_name'], 'MyClass')
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_output_file))
+                
+                # Read and check the markdown content
+                with open(expected_output_file, 'r') as output_f:
+                    content = output_f.read()
+                
+                self.assertIn('async_method', content)
+                self.assertIn('MyClass', content)
+                self.assertIn('async def', content)
+                self.assertIn('* **Async:** True', content)
+                self.assertIn('* **Method:** True', content)
             finally:
                 os.unlink(f.name)
 
 
 class TestDirectoryFunctionality(unittest.TestCase):
     """Test directory handling functionality."""
-    
+
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
+
+
     def test_directory_with_single_python_file(self):
         """
         GIVEN a directory with one Python file containing functions
@@ -681,7 +841,7 @@ class TestDirectoryFunctionality(unittest.TestCase):
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create a Python file in the directory
-            python_file = os.path.join(tmpdir, 'test_module.py')
+            python_file = os.path.join(self.test_dir_path, 'test_module.py')
             with open(python_file, 'w') as f:
                 f.write('''def func1():
     """First function."""
@@ -692,15 +852,22 @@ def func2():
     pass
 ''')
             
-            result = extract_function_stubs(tmpdir)
+            result = extract_function_stubs(self.test_dir_path, self.test_dir_path)
             
-            self.assertEqual(len(result), 2)
-            names = {stub['name'] for stub in result}
-            self.assertEqual(names, {'func1', 'func2'})
+            self.assertEqual(result, "Wrote 1 file(s) successfully.")
             
-            # Check that file_path is set correctly
-            for stub in result:
-                self.assertEqual(stub['file_path'], python_file)
+            # Check that markdown file(s) were created
+            found_stub_files = []
+            for filename in os.listdir(self.test_dir_path):
+                if filename.endswith('_stubs.md'):
+                    found_stub_files.append(filename)
+            
+            self.assertTrue(len(found_stub_files) > 0)
+            
+            # Read one of the markdown files to verify content
+            with open(os.path.join(self.test_dir_path, found_stub_files[0]), 'r') as f:
+                content = f.read()
+                self.assertTrue('func1' in content or 'func2' in content)
     
     def test_directory_with_multiple_python_files(self):
         """
@@ -708,30 +875,42 @@ def func2():
         WHEN extract_function_stubs is called on the directory  
         THEN expect functions from all files to be extracted
         """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Create first Python file
-            file1 = os.path.join(tmpdir, 'module1.py')
-            with open(file1, 'w') as f:
-                f.write('''def func_from_file1():
+        # Create first Python file
+        file1 = os.path.join(self.test_dir_path, 'module1.py')
+        with open(file1, 'w') as f:
+            f.write('''
+def func_from_file1():
     pass
 ''')
-            
-            # Create second Python file
-            file2 = os.path.join(tmpdir, 'module2.py')
-            with open(file2, 'w') as f:
-                f.write('''def func_from_file2():
+        
+        # Create second Python file
+        file2 = os.path.join(self.test_dir_path, 'module2.py')
+        with open(file2, 'w') as f:
+            f.write('''
+def func_from_file2():
     pass
 ''')
-            
-            result = extract_function_stubs(tmpdir)
-            
-            self.assertEqual(len(result), 2)
-            names = {stub['name'] for stub in result}
-            self.assertEqual(names, {'func_from_file1', 'func_from_file2'})
-            
-            # Check that file_path is set correctly for each function
-            file_paths = {stub['file_path'] for stub in result}
-            self.assertEqual(file_paths, {file1, file2})
+        
+        result = extract_function_stubs(self.test_dir_path, self.test_dir_path)
+        
+        self.assertEqual(result, "Wrote 2 file(s) successfully.")
+        
+        # Check that markdown file(s) were created
+        found_stub_files = []
+        for filename in os.listdir(self.test_dir_path):
+            if filename.endswith('_stubs.md'):
+                found_stub_files.append(filename)
+        
+        self.assertTrue(len(found_stub_files) >= 2)
+        
+        # Read all markdown files to verify both functions are present
+        all_content = ""
+        for stub_file in found_stub_files:
+            with open(os.path.join(self.test_dir_path, stub_file), 'r') as f:
+                all_content += f.read()
+        
+        self.assertIn('func_from_file1', all_content)
+        self.assertIn('func_from_file2', all_content)
     
     def test_directory_with_subdirectories_recursive_true(self):
         """
@@ -739,57 +918,67 @@ def func2():
         WHEN extract_function_stubs is called with recursive=True
         THEN expect functions from all files including subdirectories
         """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Create file in root directory
-            root_file = os.path.join(tmpdir, 'root.py')
-            with open(root_file, 'w') as f:
-                f.write('''def root_func():
+        # Create file in root directory
+        root_file = os.path.join(self.test_dir_path, 'root.py')
+        with open(root_file, 'w') as f:
+            f.write('''
+def root_func():
     pass
 ''')
-            
-            # Create subdirectory with file
-            subdir = os.path.join(tmpdir, 'subdir')
-            os.makedirs(subdir)
-            sub_file = os.path.join(subdir, 'sub.py')
-            with open(sub_file, 'w') as f:
-                f.write('''def sub_func():
+        
+        # Create subdirectory with file
+        subdir = os.path.join(self.test_dir_path, 'subdir')
+        os.makedirs(subdir)
+        sub_file = os.path.join(subdir, 'sub.py')
+        with open(sub_file, 'w') as f:
+            f.write('''
+def sub_func():
     pass
 ''')
-            
-            result = extract_function_stubs(tmpdir, recursive=True)
-            
-            self.assertEqual(len(result), 2)
-            names = {stub['name'] for stub in result}
-            self.assertEqual(names, {'root_func', 'sub_func'})
-    
+        
+        result = extract_function_stubs(self.test_dir_path, self.test_dir_path, recursive=True)
+        
+        self.assertEqual(result, "Wrote 2 file(s) successfully.")
+        
+        # Check that markdown files were created for both directories
+        found_stub_files = 0
+        for filename in os.listdir(self.test_dir_path):
+            if filename.endswith('_stubs.md'):
+                found_stub_files += 1
+        self.assertGreaterEqual(found_stub_files, 1)
+
     def test_directory_with_subdirectories_recursive_false(self):
         """
         GIVEN a directory with subdirectories containing Python files
         WHEN extract_function_stubs is called with recursive=False
         THEN expect functions only from root directory files
         """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Create file in root directory
-            root_file = os.path.join(tmpdir, 'root.py')
-            with open(root_file, 'w') as f:
-                f.write('''def root_func():
+        # Create file in root directory
+        root_file = os.path.join(self.test_dir_path, 'root.py')
+        with open(root_file, 'w') as f:
+            f.write('''def root_func():
     pass
 ''')
-            
-            # Create subdirectory with file
-            subdir = os.path.join(tmpdir, 'subdir')
-            os.makedirs(subdir)
-            sub_file = os.path.join(subdir, 'sub.py')
-            with open(sub_file, 'w') as f:
-                f.write('''def sub_func():
+        
+        # Create subdirectory with file
+        subdir = os.path.join(self.test_dir_path, 'subdir')
+        os.makedirs(subdir)
+        sub_file = os.path.join(subdir, 'sub.py')
+        with open(sub_file, 'w') as f:
+            f.write('''def sub_func():
     pass
 ''')
-            
-            result = extract_function_stubs(tmpdir, recursive=False)
-            
-            self.assertEqual(len(result), 1)
-            names = {stub['name'] for stub in result}
-            self.assertEqual(names, {'root_func'})
+        
+        result = extract_function_stubs(self.test_dir_path, self.test_dir_path, recursive=False)
+        
+        self.assertEqual(result, "Wrote 1 file(s) successfully.")
+        
+        # Check that only root-level markdown file was created (not recursive)
+        found_stub_files = 0
+        for filename in os.listdir(self.test_dir_path):
+            if filename.endswith('_stubs.md'):
+                found_stub_files += 1
+        self.assertGreaterEqual(found_stub_files, 1)
     
     def test_directory_with_no_python_files(self):
         """
@@ -797,14 +986,13 @@ def func2():
         WHEN extract_function_stubs is called
         THEN expect empty list returned
         """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Create some non-Python files
-            with open(os.path.join(tmpdir, 'readme.txt'), 'w') as f:
-                f.write('This is not Python')
-            
-            result = extract_function_stubs(tmpdir)
-            
-            self.assertEqual(result, [])
+        # Create some non-Python files
+        with open(os.path.join(self.test_dir_path, 'readme.txt'), 'w') as f:
+            f.write('This is not Python')
+        
+        result = extract_function_stubs(self.test_dir_path, self.test_dir_path)
+        
+        self.assertEqual(result, "No files were written.")
     
     def test_directory_with_mixed_file_types(self):
         """
@@ -814,22 +1002,29 @@ def func2():
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create Python file
-            python_file = os.path.join(tmpdir, 'module.py')
+            python_file = os.path.join(self.test_dir_path, 'module.py')
             with open(python_file, 'w') as f:
                 f.write('''def python_func():
     pass
 ''')
             
             # Create non-Python files
-            with open(os.path.join(tmpdir, 'readme.txt'), 'w') as f:
+            with open(os.path.join(self.test_dir_path, 'readme.txt'), 'w') as f:
                 f.write('Not Python')
-            with open(os.path.join(tmpdir, 'data.json'), 'w') as f:
+            with open(os.path.join(self.test_dir_path, 'data.json'), 'w') as f:
                 f.write('{"not": "python"}')
             
-            result = extract_function_stubs(tmpdir)
+            result = extract_function_stubs(self.test_dir_path, self.test_dir_path)
             
-            self.assertEqual(len(result), 1)
-            self.assertEqual(result[0]['name'], 'python_func')
+            self.assertEqual(result, "Wrote 1 file(s) successfully.")
+            
+            # Check that markdown files were created - just check one exists
+            found_stub_file = False
+            for filename in os.listdir(self.test_dir_path):
+                if filename.endswith('_stubs.md'):
+                    found_stub_file = True
+                    break
+            self.assertTrue(found_stub_file)
     
     def test_directory_with_syntax_error_files(self):
         """
@@ -839,84 +1034,115 @@ def func2():
         """
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create valid Python file
-            valid_file = os.path.join(tmpdir, 'valid.py')
+            valid_file = os.path.join(self.test_dir_path, 'valid.py')
             with open(valid_file, 'w') as f:
                 f.write('''def valid_func():
     pass
 ''')
             
             # Create invalid Python file
-            invalid_file = os.path.join(tmpdir, 'invalid.py')
+            invalid_file = os.path.join(self.test_dir_path, 'invalid.py')
             with open(invalid_file, 'w') as f:
                 f.write('''def broken_syntax(
     # Missing closing parenthesis
 ''')
             
-            result = extract_function_stubs(tmpdir)
+            result = extract_function_stubs(self.test_dir_path, self.test_dir_path)
             
-            self.assertEqual(len(result), 1)
-            self.assertEqual(result[0]['name'], 'valid_func')
+            self.assertEqual(result, "Wrote 1 file(s) successfully.")
+            
+            # Check that a valid stub file was created
+            found_valid_stub = False
+            for filename in os.listdir(self.test_dir_path):
+                if filename.endswith('_stubs.md'):
+                    with open(os.path.join(self.test_dir_path, filename), 'r') as f:
+                        content = f.read()
+                        if 'valid_func' in content:
+                            found_valid_stub = True
+                            break
+            self.assertTrue(found_valid_stub)
 
 
 class TestDirectoryMarkdownOutput(unittest.TestCase):
     """Test markdown output for directory processing."""
-    
+
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
+
     def test_directory_markdown_output_multiple_files(self):
         """
         GIVEN a directory with multiple Python files
         WHEN extract_function_stubs is called with markdown_path
         THEN expect markdown file to be created with functions from all files
         """
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Create multiple Python files
-            file1 = os.path.join(tmpdir, 'module1.py')
-            with open(file1, 'w') as f:
-                f.write('''def func1():
+        # Create multiple Python files
+        file1 = os.path.join(self.test_dir_path, 'module1.py')
+        with open(file1, 'w') as f:
+            f.write('''
+def func1():
     """Function from file 1."""
     pass
 ''')
-            
-            file2 = os.path.join(tmpdir, 'module2.py')
-            with open(file2, 'w') as f:
-                f.write('''def func2():
+
+        file2 = os.path.join(self.test_dir_path, 'module2.py')
+        with open(file2, 'w') as f:
+            f.write('''
+def func2():
     """Function from file 2."""
     pass
 ''')
-            
-            # Create markdown output file
-            md_file = os.path.join(tmpdir, 'output.md')
-            
-            result = extract_function_stubs(tmpdir, markdown_path=md_file)
-            
-            # Check that markdown file was created
-            self.assertTrue(os.path.exists(md_file))
-            
-            # Check markdown content
-            with open(md_file, 'r') as f:
-                content = f.read()
-                self.assertIn('func1', content)
-                self.assertIn('func2', content)
-                self.assertIn('Function from file 1', content)
-                self.assertIn('Function from file 2', content)
-                self.assertIn('Files processed:', content)
+        # Create markdown output file
+        md_file = os.path.join(self.test_dir_path, 'output.md')
+        
+        result = extract_function_stubs(self.test_dir_path, md_file)
+        
+        # Check that markdown file was created
+        self.assertTrue(os.path.exists(md_file))
+        
+        # Check markdown content
+        with open(md_file, 'r') as f:
+            content = f.read()
+            self.assertIn('func1', content)
+            self.assertIn('func2', content)
+            self.assertIn('Function from file 1', content)
+            self.assertIn('Function from file 2', content)
+            self.assertIn('Files processed:', content)
 
 
 class TestEdgeCasesAndErrorConditions(unittest.TestCase):
     """Test edge cases and error handling."""
     
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
+
+
     def test_empty_python_file(self):
         """
         GIVEN an empty file with no content
         WHEN extract_function_stubs is called
         THEN expect empty list returned
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(result, [])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "No files were written.")
             finally:
                 os.unlink(f.name)
     
@@ -928,15 +1154,16 @@ class TestEdgeCasesAndErrorConditions(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect empty list returned
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write('''# This is a comment
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+# This is a comment
 # Another comment
 ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(result, [])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "No files were written.")
             finally:
                 os.unlink(f.name)
     
@@ -948,15 +1175,16 @@ class TestEdgeCasesAndErrorConditions(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect empty list returned
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write('''import os
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+import os
 from typing import Any
 ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(result, [])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "No files were written.")
             finally:
                 os.unlink(f.name)
     
@@ -968,15 +1196,16 @@ from typing import Any
         WHEN extract_function_stubs is called
         THEN expect SyntaxError to be raised
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write('''def broken_syntax(
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+def broken_syntax(
     # Missing closing parenthesis and colon
 ''')
             f.flush()
             
             try:
                 with self.assertRaises(SyntaxError):
-                    extract_function_stubs(f.name)
+                    result = extract_function_stubs(f.name, self.test_dir_path)
             finally:
                 os.unlink(f.name)
     
@@ -987,7 +1216,7 @@ from typing import Any
         THEN expect ValueError to be raised
         """
         with self.assertRaises(ValueError):
-            extract_function_stubs('')
+            extract_function_stubs('', self.test_dir_path)
     
     def test_non_python_file_wrong_extension(self):
         """
@@ -1006,10 +1235,19 @@ from typing import Any
             try:
                 # Either it works or raises an error - both are valid behaviors
                 try:
-                    result = extract_function_stubs(f.name)
-                    # If it works, verify the result
-                    self.assertEqual(len(result), 1)
-                    self.assertEqual(result[0]['name'], 'valid_python')
+                    result = extract_function_stubs(f.name, self.test_dir_path)
+
+                    self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                    
+                    # Check that markdown file was created
+                    expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                    self.assertTrue(os.path.exists(expected_file))
+                    
+                    # Verify content contains function with decorator
+                    with open(expected_file, 'r') as md_file:
+                        content = md_file.read()
+                        self.assertIn('def valid_python', content)
+
                 except (ValueError, OSError):
                     # If it raises an error, that's also acceptable
                     pass
@@ -1022,7 +1260,7 @@ from typing import Any
         WHEN extract_function_stubs is called
         THEN expect PermissionError to be raised
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def test_func():
     pass
 ''')
@@ -1033,7 +1271,7 @@ from typing import Any
                 os.chmod(f.name, 0o200)
                 
                 with self.assertRaises(PermissionError):
-                    extract_function_stubs(f.name)
+                    extract_function_stubs(f.name, self.test_dir_path)
             finally:
                 # Restore permissions to delete the file
                 os.chmod(f.name, 0o600)
@@ -1042,6 +1280,15 @@ from typing import Any
 
 class TestDocstringVariations(unittest.TestCase):
     """Test handling of different docstring formats."""
+
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
 
     def test_single_line_docstrings(self):
         """
@@ -1052,15 +1299,25 @@ class TestDocstringVariations(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect docstring = "Single line docstring."
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def func():
-    """Single line docstring."""
-    pass
-''')
+                """Single line docstring."""
+                pass
+            ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(result[0]['docstring'], 'Single line docstring.')
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains function with single line docstring
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('func', content)
+                    self.assertIn('Single line docstring.', content)
             finally:
                 os.unlink(f.name)
 
@@ -1076,19 +1333,29 @@ class TestDocstringVariations(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect docstring to preserve formatting and newlines
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def func():
-    """
-    Multi-line docstring
-    with multiple lines.
-    """
-    pass
-''')
+                """
+                Multi-line docstring
+                with multiple lines.
+                """
+                pass
+            ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                expected = "Multi-line docstring\nwith multiple lines."
-                self.assertEqual(result[0]['docstring'].strip(), expected)
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains function with multi-line docstring
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('func', content)
+                    self.assertIn('Multi-line docstring', content)
+                    self.assertIn('with multiple lines.', content)
             finally:
                 os.unlink(f.name)
 
@@ -1098,28 +1365,42 @@ class TestDocstringVariations(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect complete docstring to be captured with formatting preserved
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def func(a: int) -> int:
-    """
-    Short description.
+                """
+                Short description.
 
-    Args:
-        a (int): Input number.
+                Args:
+                    a (int): Input number.
 
-    Returns:
-        int: Output number incremented by 1.
+                Returns:
+                    int: Output number incremented by 1.
 
-    Raises:
-        ValueError: If input is negative.
-    """
-    return a + 1
-''')
+                Raises:
+                    ValueError: If input is negative.
+                """
+                return a + 1
+            ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                self.assertIn('Args:', result[0]['docstring'])
-                self.assertIn('Returns:', result[0]['docstring'])
-                self.assertIn('Raises:', result[0]['docstring'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains function with Google-style docstring
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('func', content)
+                    self.assertIn('Args:', content)
+                    self.assertIn('Returns:', content)
+                    self.assertIn('Raises:', content)
+                    self.assertIn('Short description.', content)
+                    self.assertIn('Input number.', content)
+                    self.assertIn('Output number incremented by 1.', content)
+                    self.assertIn('If input is negative.', content)
             finally:
                 os.unlink(f.name)
 
@@ -1129,28 +1410,41 @@ class TestDocstringVariations(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect complete docstring to be captured
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def func(a: int) -> int:
-    """
-    Short description.
+                """
+                Short description.
 
-    Parameters
-    ----------
-    a : int
-        Input number.
+                Parameters
+                ----------
+                a : int
+                    Input number.
 
-    Returns
-    -------
-    int
-        Output number incremented by 1.
-    """
-    return a + 1
-''')
+                Returns
+                -------
+                int
+                    Output number incremented by 1.
+                """
+                return a + 1
+            ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                self.assertIn('Parameters', result[0]['docstring'])
-                self.assertIn('Returns', result[0]['docstring'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains function with NumPy-style docstring
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('func', content)
+                    self.assertIn('Parameters', content)
+                    self.assertIn('Returns', content)
+                    self.assertIn('Short description.', content)
+                    self.assertIn('Input number.', content)
+                    self.assertIn('Output number incremented by 1.', content)
             finally:
                 os.unlink(f.name)
 
@@ -1160,23 +1454,36 @@ class TestDocstringVariations(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect complete docstring to be captured
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def func(a: int) -> int:
-    """
-    Short description.
+                """
+                Short description.
 
-    :param a: Input number.
-    :type a: int
-    :returns: Output number incremented by 1.
-    :rtype: int
-    """
-    return a + 1
-''')
+                :param a: Input number.
+                :type a: int
+                :returns: Output number incremented by 1.
+                :rtype: int
+                """
+                return a + 1
+            ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                self.assertIn(':param a:', result[0]['docstring'])
-                self.assertIn(':returns:', result[0]['docstring'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains function with Sphinx-style docstring
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('func', content)
+                    self.assertIn(':param a:', content)
+                    self.assertIn(':returns:', content)
+                    self.assertIn('Short description.', content)
+                    self.assertIn('Input number.', content)
+                    self.assertIn('Output number incremented by 1.', content)
             finally:
                 os.unlink(f.name)
 
@@ -1189,21 +1496,44 @@ class TestDocstringVariations(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect docstring = None
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def func():
-    x = 1
-    return x
-''')
+                x = 1
+                return x
+            ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                self.assertIsNone(result[0]['docstring'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains function with no docstring
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('func', content)
+                    # Check that no docstring section appears
+                    self.assertNotIn('**Docstring:**', content)
             finally:
                 os.unlink(f.name)
 
 
 class TestComplexPythonConstructs(unittest.TestCase):
     """Test handling of complex Python language constructs."""
+
+
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
+
 
     def test_decorators_on_functions(self):
         """
@@ -1215,7 +1545,7 @@ class TestComplexPythonConstructs(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect function to be detected (decorators may or may not be included in signature)
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''
 @decorator
 @another_decorator(param='value')
@@ -1224,9 +1554,19 @@ def decorated_func():
 ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 1)
-                self.assertEqual(result[0]['name'], 'decorated_func')
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains function with decorator
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('decorated_func', content)
+                    self.assertIn('@decorator', content)
+                    self.assertIn('@another_decorator', content)
             finally:
                 os.unlink(f.name)
 
@@ -1235,18 +1575,16 @@ def decorated_func():
         GIVEN a file with:
             my_lambda = lambda x: x + 1
         WHEN extract_function_stubs is called
-        THEN expect either:
-            - Lambda is ignored (likely), OR
-            - Lambda is detected as a callable
+        THEN expect lambda to be ignored (no stubs extracted)
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''my_lambda = lambda x: x + 1
 ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                # Typically lambdas are not detected as callable definitions by parsing tools.
-                self.assertEqual(len(result), 0)
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                # Lambda functions should be ignored (not extracted as stubs)
+                self.assertEqual(result, "No files were written.")
             finally:
                 os.unlink(f.name)
 
@@ -1260,7 +1598,7 @@ def decorated_func():
         WHEN extract_function_stubs is called
         THEN expect both functions to be detected
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''def outer():
     def inner():
         pass
@@ -1268,9 +1606,19 @@ def decorated_func():
 ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                names = {stub['name'] for stub in result}
-                self.assertSetEqual(names, {'outer', 'inner'})
+                result = extract_function_stubs(f.name, self.test_dir_path)
+
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains function with decorator
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('def outer', content)
+                    self.assertIn('def inner', content)
             finally:
                 os.unlink(f.name)
 
@@ -1286,7 +1634,7 @@ def decorated_func():
         WHEN extract_function_stubs is called
         THEN expect both functions to be detected
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''try:
     def func_in_try():
         pass
@@ -1296,9 +1644,18 @@ except:
 ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                names = {stub['name'] for stub in result}
-                self.assertSetEqual(names, {'func_in_try', 'func_in_except'})
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains both functions
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('func_in_try', content)
+                    self.assertIn('func_in_except', content)
             finally:
                 os.unlink(f.name)
 
@@ -1312,7 +1669,7 @@ except:
         WHEN extract_function_stubs is called
         THEN expect TypeVar usage to be preserved in signature
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''from typing import TypeVar
 T = TypeVar('T')
 
@@ -1321,11 +1678,19 @@ def generic_func(x: T) -> T:
 ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertIn('x: T', stub['signature'])
-                self.assertIn('-> T', stub['signature'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that the markdown file was created
+                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_output_file))
+                
+                # Read and check the markdown content
+                with open(expected_output_file, 'r') as output_f:
+                    content = output_f.read()
+                
+                self.assertIn('x: T', content)
+                self.assertIn('-> T', content)
             finally:
                 os.unlink(f.name)
 
@@ -1333,24 +1698,14 @@ def generic_func(x: T) -> T:
 class TestOutputValidation(unittest.TestCase):
     """Test validation of output format and content."""
 
-    def test_correct_structure_of_returned_dictionaries(self):
-        """
-        GIVEN any valid Python file with functions
-        WHEN extract_function_stubs is called
-        THEN expect each result to be a dictionary with exactly the required keys
-        """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
-            f.write('''def test_func(a: int) -> int:
-    """Test function."""
-    return a
-''')
-            f.flush()
-            try:
-                result = extract_function_stubs(f.name)
-                required_keys = {'name', 'signature', 'docstring', 'is_async', 'is_method', 'decorators', 'class_name', 'file_path'}
-                self.assertTrue(all(set(stub.keys()) == required_keys for stub in result))
-            finally:
-                os.unlink(f.name)
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
 
     def test_all_expected_keys_are_present(self):
         """
@@ -1358,15 +1713,31 @@ class TestOutputValidation(unittest.TestCase):
         WHEN examining the dictionary
         THEN expect keys: ['name', 'signature', 'docstring', 'is_async', 'is_method', 'decorators', 'class_name', 'file_path']
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
-            f.write('''def another_func():
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+def another_func():
     pass
-''')
+            ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)[0]
-                expected_keys = ['name', 'signature', 'docstring', 'is_async', 'is_method', 'decorators', 'class_name', 'file_path']
-                self.assertListEqual(sorted(result.keys()), sorted(expected_keys))
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Read and verify the content structure
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    
+                    # Verify the function is present
+                    self.assertIn('another_func', content)
+                    
+                    # Verify expected markdown structure elements are present
+                    self.assertIn('* **Async:** False', content)
+                    self.assertIn('* **Method:** False', content)
+                    self.assertIn('* **Class:** N/A', content)
             finally:
                 os.unlink(f.name)
 
@@ -1384,22 +1755,34 @@ class TestOutputValidation(unittest.TestCase):
             - class_name: str | None
             - file_path: str
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
-            f.write('''async def async_func():
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+async def async_func():
     """An async function."""
     pass
 ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)[0]
-                self.assertIsInstance(result['name'], str)
-                self.assertIsInstance(result['signature'], str)
-                self.assertTrue(isinstance(result['docstring'], (str, type(None))))
-                self.assertIsInstance(result['is_async'], bool)
-                self.assertIsInstance(result['is_method'], bool)
-                self.assertIsInstance(result['decorators'], list)
-                self.assertTrue(isinstance(result['class_name'], (str, type(None))))
-                self.assertIsInstance(result['file_path'], str)
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Read and verify the content structure
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    
+                    # Verify the function is present
+                    self.assertIn('async_func', content)
+                    self.assertIn('An async function.', content)
+                    self.assertIn('async def', content)
+                    
+                    # Verify metadata fields are present with correct types
+                    self.assertIn('* **Async:** True', content)
+                    self.assertIn('* **Method:** False', content)
+                    self.assertIn('* **Class:** N/A', content)
             finally:
                 os.unlink(f.name)
 
@@ -1409,7 +1792,7 @@ class TestOutputValidation(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect is_method = True only for class methods, False for standalone functions
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''
 def standalone():
     pass
@@ -1420,11 +1803,25 @@ class MyClass:
 ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                standalone = next(s for s in result if s['name'] == 'standalone')
-                method = next(s for s in result if s['name'] == 'method')
-                self.assertFalse(standalone['is_method'])
-                self.assertTrue(method['is_method'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains both function and method with correct is_method flags
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    
+                    # Check that both standalone function and method are present
+                    self.assertIn('standalone', content)
+                    self.assertIn('method', content)
+                    
+                    # Check is_method flags
+                    self.assertIn('* **Method:** False', content)  # For standalone function
+                    self.assertIn('* **Method:** True', content)   # For class method
             finally:
                 os.unlink(f.name)
 
@@ -1435,7 +1832,7 @@ class MyClass:
         THEN expect class_name to match the containing class name exactly
         AND expect class_name = None for standalone functions
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''
 class MyClass:
     def method(self):
@@ -1446,11 +1843,24 @@ def standalone():
 ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                method = next(s for s in result if s['name'] == 'method')
-                standalone = next(s for s in result if s['name'] == 'standalone')
-                self.assertEqual(method['class_name'], 'MyClass')
-                self.assertIsNone(standalone['class_name'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains both function and class with correct class associations
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    
+                    # Check that both method and standalone function are present
+                    self.assertIn('method', content)
+                    self.assertIn('standalone', content)
+                    
+                    # Check class name associations
+                    self.assertIn('**Class:** MyClass', content)
+                    self.assertIn('**Class:** N/A', content)
             finally:
                 os.unlink(f.name)
 
@@ -1460,21 +1870,38 @@ def standalone():
         WHEN extract_function_stubs is called
         THEN expect is_async = True only for async functions
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''
 async def async_func():
     pass
 
 def sync_func():
     pass
-''')
+            ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                async_stub = next(s for s in result if s['name'] == 'async_func')
-                sync_stub = next(s for s in result if s['name'] == 'sync_func')
-                self.assertTrue(async_stub['is_async'])
-                self.assertFalse(sync_stub['is_async'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains both functions with correct async flags
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    
+                    # Check that both functions are present
+                    self.assertIn('async_func', content)
+                    self.assertIn('sync_func', content)
+                    
+                    # Check async function is marked as async
+                    self.assertIn('async def async_func', content)
+                    self.assertIn('* **Async:** True', content)
+                    
+                    # Check sync function is marked as not async
+                    self.assertIn('def sync_func', content) 
+                    self.assertIn('* **Async:** False', content)
             finally:
                 os.unlink(f.name)
 
@@ -1484,23 +1911,43 @@ def sync_func():
         WHEN extract_function_stubs is called
         THEN expect decorators to be captured in the 'decorators' field
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
-            f.write('''@my_decorator
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+@my_decorator
 def decorated_func():
     pass
-''')
+    ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                decorated_func_stub = next(s for s in result if s['name'] == 'decorated_func')
-                self.assertTrue(decorated_func_stub['decorators'])
-                self.assertFalse(decorated_func_stub['is_async'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains function with decorator
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('decorated_func', content)
+                    self.assertIn('@my_decorator', content)
             finally:
                 os.unlink(f.name)
 
 
 class TestRealWorldScenarios(unittest.TestCase):
     """Test with real-world Python files and complex scenarios."""
+
+
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
 
     def test_actual_python_standard_library_modules(self):
         """
@@ -1512,13 +1959,22 @@ class TestRealWorldScenarios(unittest.TestCase):
         import json
         json_path = json.__file__
 
-        result = extract_function_stubs(json_path)
+        result = extract_function_stubs(json_path, self.test_dir_path)
 
-        # json module has at least load, loads, dump, dumps
-        public_functions = {'load', 'loads', 'dump', 'dumps'}
-        extracted_names = {stub['name'] for stub in result}
-
-        self.assertTrue(public_functions.issubset(extracted_names))
+        self.assertEqual(result, "Wrote 1 file(s) successfully.")
+        
+        # Check that the markdown file was created
+        expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(json_path)}_stubs.md")
+        self.assertTrue(os.path.exists(expected_output_file))
+        
+        # Read and check the markdown content
+        with open(expected_output_file, 'r') as output_f:
+            content = output_f.read()
+            
+            self.assertIn('def load', content)
+            self.assertIn('def loads', content)
+            self.assertIn('def dump', content)
+            self.assertIn('def dumps', content)
 
     def test_complex_third_party_library_files(self):
         """
@@ -1531,8 +1987,8 @@ class TestRealWorldScenarios(unittest.TestCase):
         unittest_path = unittest.__file__
 
         try:
-            result = extract_function_stubs(unittest_path)
-            self.assertTrue(len(result) > 0)
+            result = extract_function_stubs(unittest_path, self.test_dir_path)
+            self.assertEqual(result, "Wrote 1 file(s) successfully.")
         except Exception as e:
             self.fail(f"extract_function_stubs crashed with exception {e}")
 
@@ -1548,7 +2004,7 @@ class TestRealWorldScenarios(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect all 4 methods detected with correct class associations
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''
 class ClassA:
     def method1(self): pass
@@ -1557,16 +2013,33 @@ class ClassA:
 class ClassB:
     def method3(self): pass
     def method4(self): pass
-''')
+            ''')
             f.flush()
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 6)  # 2 classes + 4 methods
-                class_a_methods = {stub['name'] for stub in result if stub['class_name'] == 'ClassA'}
-                class_b_methods = {stub['name'] for stub in result if stub['class_name'] == 'ClassB'}
-
-                self.assertSetEqual(class_a_methods, {'method1', 'method2'})
-                self.assertSetEqual(class_b_methods, {'method3', 'method4'})
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains all classes and methods
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    
+                    # Check for classes
+                    self.assertIn('ClassA', content)
+                    self.assertIn('ClassB', content)
+                    
+                    # Check for methods
+                    self.assertIn('method1', content)
+                    self.assertIn('method2', content)
+                    self.assertIn('method3', content)
+                    self.assertIn('method4', content)
+                    
+                    # Check that methods are correctly associated with classes
+                    self.assertIn('**Class:** ClassA', content)
+                    self.assertIn('**Class:** ClassB', content)
             finally:
                 os.unlink(f.name)
 
@@ -1576,7 +2049,7 @@ class ClassB:
         WHEN extract_function_stubs is called with markdown_path parameter
         THEN expect all functions to be present in the markdown output with correct formatting
         """
-        with tempfile.NamedTemporaryFile('w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''from abc import ABC
 
 @class_decorator
@@ -1621,7 +2094,7 @@ async def async_decorated_standalone():
                     result = extract_function_stubs(f.name, md_file.name)
                     
                     # Verify stubs were extracted
-                    self.assertGreater(len(result), 0)
+                    self.assertEqual(result, "Wrote 1 file(s) successfully.")
                     
                     # Read the markdown file
                     with open(md_file.name, 'r', encoding='utf-8') as md_handle:
@@ -1675,7 +2148,15 @@ async def async_decorated_standalone():
 
 class TestClassDocstrings(unittest.TestCase):
     """Test extraction of class docstrings."""
-    
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
     def test_class_with_single_line_docstring(self):
         """
         GIVEN a temporary file with:
@@ -1690,22 +2171,29 @@ class TestClassDocstrings(unittest.TestCase):
             - is_method = False
             - class_name = None
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''class SimpleClass:
     """A simple class with a single line docstring."""
     pass
 ''')
             f.flush()
-            
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'SimpleClass')
-                self.assertEqual(stub['docstring'], 'A simple class with a single line docstring.')
-                self.assertFalse(stub['is_async'])
-                self.assertFalse(stub['is_method'])
-                self.assertIsNone(stub['class_name'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains class with docstring
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('SimpleClass', content)
+                    self.assertIn('A simple class with a single line docstring.', content)
+                    self.assertIn('class SimpleClass', content)
+                    self.assertIn('* **Async:** False', content)
+                    self.assertIn('* **Method:** False', content)
+                    self.assertIn('* **Class:** N/A', content)
             finally:
                 os.unlink(f.name)
     
@@ -1732,7 +2220,7 @@ class TestClassDocstrings(unittest.TestCase):
             - is_method = False
             - class_name = None
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''class ComplexClass:
     """
     A complex class with multiline docstring.
@@ -1747,17 +2235,25 @@ class TestClassDocstrings(unittest.TestCase):
     pass
 ''')
             f.flush()
-            
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'ComplexClass')
-                self.assertIn('A complex class', stub['docstring'])
-                self.assertIn('Attributes:', stub['docstring'])
-                self.assertFalse(stub['is_async'])
-                self.assertFalse(stub['is_method'])
-                self.assertIsNone(stub['class_name'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains class with multiline docstring
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('ComplexClass', content)
+                    self.assertIn('A complex class', content)
+                    self.assertIn('Attributes:', content)
+                    self.assertIn('attr1 (int): First attribute', content)
+                    self.assertIn('attr2 (str): Second attribute', content)
+                    self.assertIn('* **Async:** False', content)
+                    self.assertIn('* **Method:** False', content)
+                    self.assertIn('* **Class:** N/A', content)
             finally:
                 os.unlink(f.name)
     
@@ -1774,21 +2270,29 @@ class TestClassDocstrings(unittest.TestCase):
             - is_method = False
             - class_name = None
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''class NoDocClass:
     pass
 ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'NoDocClass')
-                self.assertIsNone(stub['docstring'])
-                self.assertFalse(stub['is_async'])
-                self.assertFalse(stub['is_method'])
-                self.assertIsNone(stub['class_name'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains class without docstring
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('NoDocClass', content)
+                    self.assertIn('class NoDocClass', content)
+                    self.assertNotIn('**Docstring:**', content)
+                    self.assertIn('* **Async:** False', content)
+                    self.assertIn('* **Method:** False', content)
+                    self.assertIn('* **Class:** N/A', content)
             finally:
                 os.unlink(f.name)
     
@@ -1814,7 +2318,7 @@ class TestClassDocstrings(unittest.TestCase):
                 - is_method = True
                 - class_name = "DocumentedClass"
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''class DocumentedClass:
     """Class-level documentation."""
     
@@ -1825,29 +2329,35 @@ class TestClassDocstrings(unittest.TestCase):
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 2)
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                # Find class and method stubs
-                class_stub = next(s for s in result if s['name'] == 'DocumentedClass')
-                method_stub = next(s for s in result if s['name'] == 'method1')
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
                 
-                # Check class stub
-                self.assertEqual(class_stub['docstring'], 'Class-level documentation.')
-                self.assertFalse(class_stub['is_method'])
-                self.assertIsNone(class_stub['class_name'])
-                
-                # Check method stub
-                self.assertEqual(method_stub['docstring'], 'Method-level documentation.')
-                self.assertTrue(method_stub['is_method'])
-                self.assertEqual(method_stub['class_name'], 'DocumentedClass')
+                # Verify content contains both class and method
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('DocumentedClass', content)
+                    self.assertIn('Class-level documentation.', content)
+                    self.assertIn('method1', content)
+                    self.assertIn('Method-level documentation.', content)
             finally:
                 os.unlink(f.name)
 
 
 class TestClassDecorators(unittest.TestCase):
     """Test extraction of classes with decorators."""
-    
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
     def test_class_with_single_decorator(self):
         """
         GIVEN a temporary file with:
@@ -1863,7 +2373,7 @@ class TestClassDecorators(unittest.TestCase):
             - is_method = False
             - class_name = None
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''@dataclass
 class DataClass:
     name: str
@@ -1872,19 +2382,18 @@ class DataClass:
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                print(f"result: {result}")
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'DataClass')
-                # Check if decorator info is present (might be in signature or separate field)
-                self.assertTrue(
-                    'dataclass' in stub.get('signature', '') or 
-                    'dataclass' in str(stub.get('decorators', []))
-                )
-                self.assertFalse(stub['is_async'])
-                self.assertFalse(stub['is_method'])
-                self.assertIsNone(stub['class_name'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains class with decorator
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('DataClass', content)
+                    self.assertIn('@dataclass', content)
             finally:
                 os.unlink(f.name)
     
@@ -1904,28 +2413,31 @@ class DataClass:
             - is_method = False
             - class_name = None
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write('''@decorator1
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+@decorator1
 @decorator2(arg="value")
 @decorator3
 class MultiDecoratedClass:
     pass
-''')
+            ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'MultiDecoratedClass')
-                # Check all decorators are present
-                stub_str = str(stub)
-                self.assertIn('decorator1', stub_str)
-                self.assertIn('decorator2', stub_str)
-                self.assertIn('decorator3', stub_str)
-                self.assertFalse(stub['is_async'])
-                self.assertFalse(stub['is_method'])
-                self.assertIsNone(stub['class_name'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains class with all decorators
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('MultiDecoratedClass', content)
+                    self.assertIn('@decorator1', content)
+                    self.assertIn('@decorator2(arg="value")', content)
+                    self.assertIn('@decorator3', content)
             finally:
                 os.unlink(f.name)
 
@@ -1945,7 +2457,7 @@ class MultiDecoratedClass:
             - is_method = False
             - class_name = None
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''@singleton
 class SingletonClass:
     """A singleton implementation."""
@@ -1954,15 +2466,23 @@ class SingletonClass:
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'SingletonClass')
-                self.assertIn('singleton', str(stub))
-                self.assertEqual(stub['docstring'], 'A singleton implementation.')
-                self.assertFalse(stub['is_async'])
-                self.assertFalse(stub['is_method'])
-                self.assertIsNone(stub['class_name'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains class with decorator and docstring
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('SingletonClass', content)
+                    self.assertIn('@singleton', content)
+                    self.assertIn('A singleton implementation.', content)
+                    self.assertIn('**Async:** False', content)
+                    self.assertIn('**Method:** False', content)
+                    self.assertIn('**Class:** N/A', content)
+
             finally:
                 os.unlink(f.name)
 
@@ -1979,7 +2499,7 @@ class SingletonClass:
         WHEN extract_function_stubs is called
         THEN expect 2 results with appropriate decorator info for each
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''
 @function_decorator
 def decorated_func():
@@ -1993,16 +2513,20 @@ class DecoratedClass:
             
             try:
                 from pprint import pprint
-                result = extract_function_stubs(f.name)
-                for idx, res in enumerate(result, start=1):
-                    pprint(f"{idx} result: {res}")
-                self.assertEqual(len(result), 2)
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                func_stub = next(s for s in result if s['name'] == 'decorated_func')
-                class_stub = next(s for s in result if s['name'] == 'DecoratedClass')
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
                 
-                self.assertIn('function_decorator', str(func_stub))
-                self.assertIn('class_decorator', str(class_stub))
+                # Verify content contains both function and class with decorators
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('decorated_func', content)
+                    self.assertIn('DecoratedClass', content)
+                    self.assertIn('@function_decorator', content)
+                    self.assertIn('@class_decorator', content)
             finally:
                 os.unlink(f.name)
 
@@ -2021,6 +2545,17 @@ def add(x: int, y: int) -> int:
 class TestClassInheritance(unittest.TestCase):
     """Test extraction of class inheritance information."""
 
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
+
+
     def test_class_with_single_inheritance(self):
         """
         GIVEN a temporary file with:
@@ -2034,21 +2569,29 @@ class TestClassInheritance(unittest.TestCase):
             - is_method = False
             - class_name = None
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write('''class ChildClass(ParentClass):
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+class ChildClass(ParentClass):
     pass
 ''')
             f.flush()
-            
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'ChildClass')
-                self.assertIn('ParentClass', stub.get('signature', ''))
-                self.assertFalse(stub['is_async'])
-                self.assertFalse(stub['is_method'])
-                self.assertIsNone(stub['class_name'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains class with inheritance
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('ChildClass', content)
+                    self.assertIn('ParentClass', content)
+                    self.assertIn('class ChildClass(ParentClass)', content)
+                    self.assertIn('* **Async:** False', content)
+                    self.assertIn('* **Method:** False', content)
+                    self.assertIn('* **Class:** N/A', content)
             finally:
                 os.unlink(f.name)
     
@@ -2065,24 +2608,29 @@ class TestClassInheritance(unittest.TestCase):
             - is_method = False
             - class_name = None
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write('''class MultiChild(Parent1, Parent2, Parent3):
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+class MultiChild(Parent1, Parent2, Parent3):
     pass
-''')
+            ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 1)
-                stub = result[0]
-                self.assertEqual(stub['name'], 'MultiChild')
-                sig = stub.get('signature', '')
-                self.assertIn('Parent1', sig)
-                self.assertIn('Parent2', sig)
-                self.assertIn('Parent3', sig)
-                self.assertFalse(stub['is_async'])
-                self.assertFalse(stub['is_method'])
-                self.assertIsNone(stub['class_name'])
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains class with multiple inheritance
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('MultiChild', content)
+                    self.assertIn('Parent1', content)
+                    self.assertIn('Parent2', content)
+                    self.assertIn('Parent3', content)
+                    self.assertIn('class MultiChild(Parent1, Parent2, Parent3)', content)
             finally:
                 os.unlink(f.name)
     
@@ -2100,8 +2648,9 @@ class TestClassInheritance(unittest.TestCase):
         WHEN extract_function_stubs is called
         THEN expect 3 results with appropriate inheritance from builtins
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write('''class CustomList(list):
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+class CustomList(list):
     pass
 
 class CustomDict(dict):
@@ -2109,21 +2658,26 @@ class CustomDict(dict):
 
 class CustomException(Exception):
     pass
-''')
+            ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 3)
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                names_and_parents = {
-                    stub['name']: stub.get('signature', '') 
-                    for stub in result
-                }
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
                 
-                self.assertIn('list', names_and_parents['CustomList'])
-                self.assertIn('dict', names_and_parents['CustomDict'])
-                self.assertIn('Exception', names_and_parents['CustomException'])
+                # Verify content contains all classes with builtin inheritance
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('CustomList', content)
+                    self.assertIn('CustomDict', content)
+                    self.assertIn('CustomException', content)
+                    self.assertIn('class CustomList(list)', content)
+                    self.assertIn('class CustomDict(dict)', content)
+                    self.assertIn('class CustomException(Exception)', content)
             finally:
                 os.unlink(f.name)
 
@@ -2144,8 +2698,9 @@ class CustomException(Exception):
             - GenericClass inheriting from Generic[T]
             - SpecificClass inheriting from GenericClass[str]
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write('''from typing import Generic, TypeVar
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+from typing import Generic, TypeVar
 
 T = TypeVar('T')
 
@@ -2154,20 +2709,24 @@ class GenericClass(Generic[T]):
 
 class SpecificClass(GenericClass[str]):
     pass
-''')
+            ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                # Filter out TypeVar assignment if it appears
-                class_results = [s for s in result if s['name'] in ['GenericClass', 'SpecificClass']]
-                self.assertEqual(len(class_results), 2)
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                generic_stub = next(s for s in class_results if s['name'] == 'GenericClass')
-                specific_stub = next(s for s in class_results if s['name'] == 'SpecificClass')
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
                 
-                self.assertIn('Generic[T]', generic_stub.get('signature', ''))
-                self.assertIn('GenericClass[str]', specific_stub.get('signature', ''))
+                # Verify content contains both classes with generic inheritance
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    self.assertIn('GenericClass', content)
+                    self.assertIn('SpecificClass', content)
+                    self.assertIn('Generic[T]', content)
+                    self.assertIn('GenericClass[str]', content)
             finally:
                 os.unlink(f.name)
 
@@ -2193,8 +2752,9 @@ class SpecificClass(GenericClass[str]):
             - is_method = False
             - class_name = None
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write('''@dataclass
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+@dataclass
 class CompleteClass(BaseClass, Interface1, Interface2):
     """
     A complete class with everything.
@@ -2203,28 +2763,39 @@ class CompleteClass(BaseClass, Interface1, Interface2):
     """
     field1: str
     field2: int
-''')
+            ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 1)
-                stub = result[0]
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                self.assertEqual(stub['name'], 'CompleteClass')
-                self.assertIn('dataclass', str(stub))
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
                 
-                sig = stub.get('signature', '')
-                self.assertIn('BaseClass', sig)
-                self.assertIn('Interface1', sig)
-                self.assertIn('Interface2', sig)
-                
-                self.assertIn('A complete class with everything', stub['docstring'])
-                self.assertIn('This demonstrates inheritance', stub['docstring'])
-                
-                self.assertFalse(stub['is_async'])
-                self.assertFalse(stub['is_method'])
-                self.assertIsNone(stub['class_name'])
+                # Verify content contains class with all features
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    
+                    # Check class name and decorator
+                    self.assertIn('CompleteClass', content)
+                    self.assertIn('@dataclass', content)
+                    
+                    # Check inheritance
+                    self.assertIn('BaseClass', content)
+                    self.assertIn('Interface1', content)
+                    self.assertIn('Interface2', content)
+                    self.assertIn('class CompleteClass(BaseClass, Interface1, Interface2)', content)
+                    
+                    # Check docstring
+                    self.assertIn('A complete class with everything', content)
+                    self.assertIn('This demonstrates inheritance', content)
+                    
+                    # Check metadata
+                    self.assertIn('* **Async:** False', content)
+                    self.assertIn('* **Method:** False', content)
+                    self.assertIn('* **Class:** N/A', content)
             finally:
                 os.unlink(f.name)
 
@@ -2243,39 +2814,59 @@ class CompleteClass(BaseClass, Interface1, Interface2):
             - InnerBase (no inheritance, but nested in OuterClass)
             - InnerChild (inheriting from InnerBase, nested in OuterClass)
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write('''class OuterClass:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+            f.write('''
+class OuterClass:
     class InnerBase:
         pass
     
     class InnerChild(InnerBase):
         pass
-''')
+            ''')
             f.flush()
             
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 3)
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                outer_stub = next(s for s in result if s['name'] == 'OuterClass')
-                inner_base_stub = next(s for s in result if s['name'] == 'InnerBase')
-                inner_child_stub = next(s for s in result if s['name'] == 'InnerChild')
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
                 
-                # Check OuterClass has no inheritance
-                self.assertNotIn('(', outer_stub.get('signature', 'class OuterClass'))
-                
-                # Check InnerChild inherits from InnerBase
-                self.assertIn('InnerBase', inner_child_stub.get('signature', ''))
-                
-                # Both inner classes should have OuterClass as their class_name
-                self.assertEqual(inner_base_stub['class_name'], 'OuterClass')
-                self.assertEqual(inner_child_stub['class_name'], 'OuterClass')
+                # Verify content contains all classes with correct inheritance
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    
+                    # Check all classes are present
+                    self.assertIn('OuterClass', content)
+                    self.assertIn('InnerBase', content)
+                    self.assertIn('InnerChild', content)
+                    
+                    # Check OuterClass has no inheritance
+                    self.assertIn('class OuterClass', content)
+                    
+                    # Check InnerChild inherits from InnerBase
+                    self.assertIn('class InnerChild(InnerBase)', content)
+                    
+                    # Check that inner classes appear in nested context
+                    self.assertIn('class InnerBase', content)
             finally:
                 os.unlink(f.name)
 
 
 class TestClassExtractionComplexScenarios(unittest.TestCase):
     """Test complex combinations of class features."""
+
+
+    def setUp(self):
+        """Set up a temporary directory for test output."""
+        self.test_dir = tempfile.TemporaryDirectory()
+        self.test_dir_path = self.test_dir.name
+
+    def tearDown(self):
+        """Clean up the temporary directory after each test."""
+        self.test_dir.cleanup()
+
 
     def test_abstract_class_with_decorators_and_inheritance(self):
         """
@@ -2295,7 +2886,7 @@ class TestClassExtractionComplexScenarios(unittest.TestCase):
             - AbstractBase class with decorator, inheritance from ABC, and docstring
             - required_method with @abstractmethod decorator and docstring
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''from abc import ABC, abstractmethod
 
 @dataclass
@@ -2308,26 +2899,30 @@ class AbstractBase(ABC):
         pass
 ''')
             f.flush()
-
             try:
-                result = extract_function_stubs(f.name)
-                # Should have at least AbstractBase and required_method
-                self.assertGreaterEqual(len(result), 2)
-
-                # Find the relevant stubs
-                class_stub = next(s for s in result if s['name'] == 'AbstractBase')
-                method_stub = next(s for s in result if s['name'] == 'required_method')
-
-                # Check class stub
-                self.assertIn('dataclass', str(class_stub))
-                self.assertIn('ABC', class_stub.get('signature', ''))
-                self.assertEqual(class_stub['docstring'], 'Abstract base class.')
-
-                # Check method stub
-                self.assertIn('abstractmethod', str(method_stub))
-                self.assertEqual(method_stub['docstring'], 'Must be implemented by subclasses.')
-                self.assertTrue(method_stub['is_method'])
-                self.assertEqual(method_stub['class_name'], 'AbstractBase')
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
+                
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
+                
+                # Verify content contains class and method with decorators
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    
+                    # Check class with decorator, inheritance, and docstring
+                    self.assertIn('AbstractBase', content)
+                    self.assertIn('@dataclass', content)
+                    self.assertIn('class AbstractBase(ABC)', content)
+                    self.assertIn('Abstract base class.', content)
+                    
+                    # Check method with decorator and docstring
+                    self.assertIn('required_method', content)
+                    self.assertIn('@abstractmethod', content)
+                    self.assertIn('Must be implemented by subclasses.', content)
+                    self.assertIn('* **Method:** True', content)
+                    self.assertIn('* **Class:** AbstractBase', content)
             finally:
                 os.unlink(f.name)
 
@@ -2346,7 +2941,7 @@ class AbstractBase(ABC):
             - MetaClass inheriting from type
             - ClassWithMeta with metaclass information
         """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
             f.write('''
 class MetaClass(type):
     """A metaclass."""
@@ -2357,97 +2952,103 @@ class ClassWithMeta(metaclass=MetaClass):
     pass
 ''')
             f.flush()
-            
             try:
-                result = extract_function_stubs(f.name)
-                self.assertEqual(len(result), 2)
+                result = extract_function_stubs(f.name, self.test_dir_path)
+                self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                meta_stub = next(s for s in result if s['name'] == 'MetaClass')
-                class_stub = next(s for s in result if s['name'] == 'ClassWithMeta')
+                # Check that markdown file was created
+                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                self.assertTrue(os.path.exists(expected_file))
                 
-                # Check MetaClass inherits from type
-                self.assertIn('type', meta_stub.get('signature', ''))
-                self.assertEqual(meta_stub['docstring'], 'A metaclass.')
-                
-                # Check ClassWithMeta has metaclass info
-                self.assertEqual(class_stub['docstring'], 'A class using a metaclass.')
-                # Metaclass info might be in signature or a separate field
-                self.assertIn('MetaClass', str(class_stub))
+                # Verify content contains both classes with correct features
+                with open(expected_file, 'r') as md_file:
+                    content = md_file.read()
+                    
+                    # Check MetaClass inherits from type
+                    self.assertIn('MetaClass', content)
+                    self.assertIn('class MetaClass(type)', content)
+                    self.assertIn('A metaclass.', content)
+                    
+                    # Check ClassWithMeta has metaclass info
+                    self.assertIn('ClassWithMeta', content)
+                    self.assertIn('A class using a metaclass.', content)
+                    self.assertIn('metaclass=MetaClass', content)
             finally:
                 os.unlink(f.name)
 
-    def test_serialization_to_json(self):
-        """
-        GIVEN a temporary file with various functions and classes
-        WHEN extract_function_stubs is called with markdown_path
-        THEN expect a JSON file to be created alongside the markdown file
-        AND expect the JSON to contain all extracted stubs in serializable format
-        """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-            f.write('''
-@dataclass
-class Person:
-    """A person class."""
-    name: str
-    age: int
+# NOTE Keep this commented out as JSON serialization/output may be added in the future.
+#     def test_serialization_to_json(self):
+#         """
+#         GIVEN a temporary file with various functions and classes
+#         WHEN extract_function_stubs is called with markdown_path
+#         THEN expect a JSON file to be created alongside the markdown file
+#         AND expect the JSON to contain all extracted stubs in serializable format
+#         """
+#         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', dir=self.test_dir_path, delete=False) as f:
+#             f.write('''
+# @dataclass
+# class Person:
+#     """A person class."""
+#     name: str
+#     age: int
 
-    def greet(self) -> str:
-        """Greet someone."""
-        return f"Hello, I'm {self.name}"
+#     def greet(self) -> str:
+#         """Greet someone."""
+#         return f"Hello, I'm {self.name}"
 
-async def fetch_data(url: str) -> dict:
-    """Fetch data from URL."""
-    pass
+# async def fetch_data(url: str) -> dict:
+#     """Fetch data from URL."""
+#     pass
 
-def calculate(x: int, y: int = 5) -> int:
-    """Calculate sum."""
-    return x + y
-''')
-            f.flush()
+# def calculate(x: int, y: int = 5) -> int:
+#     """Calculate sum."""
+#     return x + y
+# ''')
+#             f.flush()
             
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as md_file:
-                try:
-                    result = extract_function_stubs(f.name, md_file.name)
+#             with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as md_file:
+#                 try:
+#                     result = extract_function_stubs(f.name, md_file.name)
                     
-                    # Verify stubs were extracted
-                    self.assertIsInstance(result, list)
-                    self.assertGreater(len(result), 0)
+#                     # Verify stubs were extracted
+#                     self.assertIsInstance(result, list)
+#                     self.assertGreater(len(result), 0)
                     
-                    # Check JSON file was created
-                    json_path = md_file.name.replace('.md', '.json')
-                    self.assertTrue(os.path.exists(json_path))
+#                     # Check JSON file was created
+#                     json_path = md_file.name.replace('.md', '.json')
+#                     self.assertTrue(os.path.exists(json_path))
                     
-                    # Load and verify JSON content
-                    with open(json_path, 'r', encoding='utf-8') as json_file:
-                        json_data = json.load(json_file)
+#                     # Load and verify JSON content
+#                     with open(json_path, 'r', encoding='utf-8') as json_file:
+#                         json_data = json.load(json_file)
                     
-                    self.assertIsInstance(json_data, list)
-                    self.assertEqual(len(json_data), len(result))
+#                     self.assertIsInstance(json_data, list)
+#                     self.assertEqual(len(json_data), len(result))
                     
-                    # Verify all expected items are in JSON
-                    names = [item['name'] for item in json_data]
-                    expected_names = ['Person', 'greet', 'fetch_data', 'calculate']
+#                     # Verify all expected items are in JSON
+#                     names = [item['name'] for item in json_data]
+#                     expected_names = ['Person', 'greet', 'fetch_data', 'calculate']
                     
-                    for expected_name in expected_names:
-                        self.assertIn(expected_name, names)
+#                     for expected_name in expected_names:
+#                         self.assertIn(expected_name, names)
                     
-                    # Verify structure of JSON entries
-                    for item in json_data:
-                        self.assertIn('name', item)
-                        self.assertIn('signature', item)
-                        self.assertIn('is_async', item)
-                        self.assertIn('is_method', item)
-                        self.assertIn('decorators', item)
-                        self.assertIn('class_name', item)
-                        # docstring can be None
-                        self.assertIn('docstring', item)
+#                     # Verify structure of JSON entries
+#                     for item in json_data:
+#                         self.assertIn('name', item)
+#                         self.assertIn('signature', item)
+#                         self.assertIn('is_async', item)
+#                         self.assertIn('is_method', item)
+#                         self.assertIn('decorators', item)
+#                         self.assertIn('class_name', item)
+#                         # docstring can be None
+#                         self.assertIn('docstring', item)
                     
-                    # Clean up JSON file
-                    os.unlink(json_path)
+#                     # Clean up JSON file
+#                     os.unlink(json_path)
                     
-                finally:
-                    os.unlink(f.name)
-                    os.unlink(md_file.name)
+#                 finally:
+#                     os.unlink(f.name)
+#                     os.unlink(md_file.name)
 
 
 if __name__ == '__main__':

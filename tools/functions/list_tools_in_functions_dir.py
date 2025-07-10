@@ -93,11 +93,6 @@ class _Cache:
 
 
 
-
-
-_cache = _Cache()
-
-
 def _save_results_to_csv(query, top_k, similarity_threshold, recursive, results, search_dir):
     """Save function call results to CSV for statistical analysis."""
     # Create logs directory if it doesn't exist
@@ -207,6 +202,8 @@ def list_tools_in_functions_dir(
     
     if not 0.0 <= similarity_threshold <= 1.0:
         raise ValueError("similarity_threshold must be between 0.0 and 1.0")
+
+    _cache = _Cache()
 
     if _cache is None:
         raise ValueError("Cache is not initialized. Please ensure dependencies are loaded correctly.")

@@ -100,7 +100,7 @@ class McpLogger:
         Args:
             message: The message to print.
         """
-        print(message, file=sys.stderr)
+        print(message) # , file=sys.stderr
 
     def _format_message(self, level_name: str, message: str) -> str:
         """Formats the log message with a timestamp and level name."""

@@ -11,9 +11,10 @@ import os
 from pathlib import Path
 from typing import LiteralString
 
-
-import yaml
-
+try:
+    import yaml
+except ImportError:
+    raise ImportError("Please install PyYAML to use this module: pip install pyyaml")
 
 _ROOT_DIR = Path(__file__).parent
 

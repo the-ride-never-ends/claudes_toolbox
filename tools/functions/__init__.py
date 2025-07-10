@@ -28,5 +28,5 @@ def register_files_in_functions_dir() -> list[str]:
 modules_names = register_files_in_functions_dir()
 
 __all__ = [
-    module for module in modules_names
+    module for module in iter(modules_names)
 ]

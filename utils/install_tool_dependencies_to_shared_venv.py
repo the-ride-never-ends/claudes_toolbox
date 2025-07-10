@@ -20,17 +20,17 @@ def install_tool_dependencies_to_shared_venv(requirements_file_paths: list[Path]
         mcp_logger.info("No requirements.txt files found.")
     else:
         len_requirements_file_paths = len(requirements_file_paths)
-        print(f"Found {len_requirements_file_paths} requirements.txt files.")
+        mcp_logger.info(f"Found {len_requirements_file_paths} requirements.txt files.")
 
     installed_tools = 0
     # Install each tool's dependencies
     for path in requirements_file_paths:
         abs_path = path.resolve()
         if not abs_path.exists():
-            mcp_logger.warning(f"Path {abs_path} does not exist. Skipping...")
+            mcp_logger.warning(f"Path {abs_path.resolve()} does not exist. Skipping...")
             continue
         else:
-            mcp_logger.info(f"Installing dependencies from {abs_path}...")
+            mcp_logger.info(f"Installing dependencies from {abs_path.resolve()}...")
 
             try:
                 results = sub.run(["uv", "add", "-r", f"{abs_path}"],capture_output=True)
