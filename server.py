@@ -10,8 +10,8 @@ from mcp.server.fastmcp import FastMCP
 
 from configs import configs
 from logger import mcp_logger
-from utils.install_tool_dependencies_to_shared_venv import install_tool_dependencies_to_shared_venv
-from utils.server.get_functions_tools_from_files import get_function_tools_from_files
+from server_utils.install_tool_dependencies_to_shared_venv import install_tool_dependencies_to_shared_venv
+from server_utils.server_.get_functions_tools_from_files import get_function_tools_from_files
 
 
 class TotalTools:

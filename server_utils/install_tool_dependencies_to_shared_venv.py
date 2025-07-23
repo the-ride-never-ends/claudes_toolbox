@@ -1,14 +1,32 @@
 from pathlib import Path
 import subprocess as sub
 
+
 from logger import mcp_logger
+
 
 def install_tool_dependencies_to_shared_venv(requirements_file_paths: list[Path]) -> None:
     """
-    Install tool dependencies to a shared virtual environment using venv.
+    Install dependencies from multiple requirements.txt files to a shared virtual environment using uv.
+
+    This function processes a list of requirements.txt file paths and installs their dependencies
+    into the current virtual environment using the 'uv' package manager. It validates that uv
+    is installed and available before proceeding.
 
     Args:
-        requirements_file_paths (str): Paths to the requirements.txt files.
+        requirements_file_paths (list[Path]): List of Path objects pointing to requirements.txt 
+                                            files containing package dependencies to install.
+
+    Returns:
+        None
+
+    Raises:
+        RuntimeError: If uv is not installed or if installation of any requirements file fails.
+
+    Note:
+        - Skips non-existent file paths with a warning
+        - Logs progress and results for each requirements file processed
+        - Uses 'uv add -r' command to install packages
     """
     # Check if uv is installed
     try:

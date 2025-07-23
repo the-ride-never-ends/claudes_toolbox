@@ -66,6 +66,13 @@ import json
 from tools.functions.extract_function_stubs import extract_function_stubs
 
 
+def _file_without_extension(file_path):
+    """
+    Helper method to get the file name without extension.
+    """
+    return os.path.splitext(os.path.basename(file_path))[0]
+
+
 class TestBasicFunctionality(unittest.TestCase):
     """Test basic functionality of extract_function_stubs."""
 
@@ -104,7 +111,7 @@ def add_numbers(a: int, b: int) -> int:
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains the function
@@ -140,7 +147,7 @@ def func3(): pass
                 
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 with open(expected_file, 'r') as md_file:
                     content = md_file.read()
@@ -170,7 +177,7 @@ def func3(): pass
                 
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 with open(expected_file, 'r') as md_file:
                     content = md_file.read()
@@ -200,7 +207,7 @@ def func3(): pass
                 
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 with open(expected_file, 'r') as md_file:
                     content = md_file.read()
@@ -230,7 +237,7 @@ def func3(): pass
                 
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 with open(expected_file, 'r') as md_file:
                     content = md_file.read()
                     self.assertIn('complete_func', content)
@@ -271,7 +278,7 @@ class TestFunctionSignatureVariations(unittest.TestCase):
 
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
 
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 with open(expected_file, 'r') as md_file:
                     content = md_file.read()
                     self.assertIn('() -> None', content)
@@ -297,7 +304,7 @@ class TestFunctionSignatureVariations(unittest.TestCase):
 
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
 
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 with open(expected_file, 'r') as md_file:
                     content = md_file.read()
                     self.assertIn('(a, b, c)', content)
@@ -323,7 +330,7 @@ class TestFunctionSignatureVariations(unittest.TestCase):
 
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
 
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 with open(expected_file, 'r') as md_file:
                     content = md_file.read()
                     self.assertIn('b: str = "default"', content)
@@ -352,7 +359,7 @@ def variadic(a: int, *args: str, **kwargs: Any) -> None:
 
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
 
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 with open(expected_file, 'r') as md_file:
                     content = md_file.read()
                     self.assertIn('*args: str', content)
@@ -382,7 +389,7 @@ def complex_types(x: Union[int, str], y: Optional[List[Dict[str, int]]]) -> None
                 
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
 
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 with open(expected_file, 'r') as md_file:
                     content = md_file.read()
                     self.assertIn('Union[int, str]', content)
@@ -409,7 +416,7 @@ def complex_types(x: Union[int, str], y: Optional[List[Dict[str, int]]]) -> None
 
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
 
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 with open(expected_file, 'r') as md_file:
                     content = md_file.read()
 
@@ -453,7 +460,7 @@ class TestClassAndMethodTests(unittest.TestCase):
                 
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
 
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 with open(expected_file, 'r') as md_file:
                     content = md_file.read()
 
@@ -488,7 +495,7 @@ class TestClassAndMethodTests(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains both class and method
@@ -525,7 +532,7 @@ class TestClassAndMethodTests(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains both class and method
@@ -567,7 +574,7 @@ class TestClassAndMethodTests(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that the markdown file was created
-                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_output_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_output_file))
                 
                 # Read and check the markdown content
@@ -641,7 +648,7 @@ class TestClassAndMethodTests(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that the markdown file was created
-                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_output_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_output_file))
                 
                 # Read and check the markdown content
@@ -684,7 +691,7 @@ class Child(Parent):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that the markdown file was created
-                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_output_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_output_file))
                 
                 # Read and check the markdown content
@@ -729,12 +736,18 @@ class TestAsyncFunctionTests(unittest.TestCase):
             
             try:
                 result = extract_function_stubs(f.name, self.test_dir_path)
-                
+
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
-                self.assertTrue(os.path.exists(expected_output_file))
+                expected_output_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
+                self.assertTrue(
+                    os.path.exists(expected_output_file), 
+                    msg=f"""
+                    Expected output file not found at '{expected_output_file}'
+                    Python files in the test directory: {os.listdir(self.test_dir_path)}
+                    """.strip()
+                )
                 
                 # Read and check the markdown content
                 with open(expected_output_file, 'r') as output_f:
@@ -765,7 +778,7 @@ class TestAsyncFunctionTests(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_output_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_output_file))
                 
                 # Read and check the markdown content
@@ -803,7 +816,7 @@ class TestAsyncFunctionTests(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_output_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_output_file))
                 
                 # Read and check the markdown content
@@ -1240,7 +1253,7 @@ def broken_syntax(
                     self.assertEqual(result, "Wrote 1 file(s) successfully.")
                     
                     # Check that markdown file was created
-                    expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                    expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                     self.assertTrue(os.path.exists(expected_file))
                     
                     # Verify content contains function with decorator
@@ -1310,7 +1323,7 @@ class TestDocstringVariations(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains function with single line docstring
@@ -1347,7 +1360,7 @@ class TestDocstringVariations(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains function with multi-line docstring
@@ -1387,7 +1400,7 @@ class TestDocstringVariations(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains function with Google-style docstring
@@ -1433,7 +1446,7 @@ class TestDocstringVariations(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains function with NumPy-style docstring
@@ -1472,7 +1485,7 @@ class TestDocstringVariations(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains function with Sphinx-style docstring
@@ -1507,7 +1520,7 @@ class TestDocstringVariations(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains function with no docstring
@@ -1558,7 +1571,7 @@ def decorated_func():
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains function with decorator
@@ -1611,7 +1624,7 @@ def decorated_func():
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains function with decorator
@@ -1648,7 +1661,7 @@ except:
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains both functions
@@ -1682,7 +1695,7 @@ def generic_func(x: T) -> T:
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that the markdown file was created
-                expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_output_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_output_file))
                 
                 # Read and check the markdown content
@@ -1724,7 +1737,7 @@ def another_func():
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Read and verify the content structure
@@ -1767,7 +1780,7 @@ async def async_func():
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Read and verify the content structure
@@ -1808,7 +1821,7 @@ class MyClass:
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains both function and method with correct is_method flags
@@ -1847,7 +1860,7 @@ def standalone():
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains both function and class with correct class associations
@@ -1884,7 +1897,7 @@ def sync_func():
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains both functions with correct async flags
@@ -1923,7 +1936,7 @@ def decorated_func():
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains function with decorator
@@ -1964,7 +1977,9 @@ class TestRealWorldScenarios(unittest.TestCase):
         self.assertEqual(result, "Wrote 1 file(s) successfully.")
         
         # Check that the markdown file was created
-        expected_output_file = os.path.join(self.test_dir_path, f"{os.path.basename(json_path)}_stubs.md")
+        expected_output_file = os.path.join(self.test_dir_path, f"{_file_without_extension(json_path)}_stubs.md")
+        print(f"Expected output file: {expected_output_file}")
+        print(f"Files in test directory: {os.listdir(self.test_dir_path)}")
         self.assertTrue(os.path.exists(expected_output_file))
         
         # Read and check the markdown content
@@ -2020,7 +2035,7 @@ class ClassB:
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains all classes and methods
@@ -2182,7 +2197,7 @@ class TestClassDocstrings(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains class with docstring
@@ -2240,7 +2255,7 @@ class TestClassDocstrings(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains class with multiline docstring
@@ -2281,7 +2296,7 @@ class TestClassDocstrings(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains class without docstring
@@ -2333,7 +2348,7 @@ class TestClassDocstrings(unittest.TestCase):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains both class and method
@@ -2386,7 +2401,7 @@ class DataClass:
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains class with decorator
@@ -2428,7 +2443,7 @@ class MultiDecoratedClass:
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains class with all decorators
@@ -2470,7 +2485,7 @@ class SingletonClass:
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains class with decorator and docstring
@@ -2517,7 +2532,7 @@ class DecoratedClass:
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains both function and class with decorators
@@ -2580,7 +2595,7 @@ class ChildClass(ParentClass):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains class with inheritance
@@ -2620,7 +2635,7 @@ class MultiChild(Parent1, Parent2, Parent3):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains class with multiple inheritance
@@ -2666,7 +2681,7 @@ class CustomException(Exception):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains all classes with builtin inheritance
@@ -2717,7 +2732,7 @@ class SpecificClass(GenericClass[str]):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains both classes with generic inheritance
@@ -2771,7 +2786,7 @@ class CompleteClass(BaseClass, Interface1, Interface2):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains class with all features
@@ -2830,7 +2845,7 @@ class OuterClass:
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains all classes with correct inheritance
@@ -2904,7 +2919,7 @@ class AbstractBase(ABC):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains class and method with decorators
@@ -2957,7 +2972,7 @@ class ClassWithMeta(metaclass=MetaClass):
                 self.assertEqual(result, "Wrote 1 file(s) successfully.")
                 
                 # Check that markdown file was created
-                expected_file = os.path.join(self.test_dir_path, f"{os.path.basename(f.name)}_stubs.md")
+                expected_file = os.path.join(self.test_dir_path, f"{_file_without_extension(f.name)}_stubs.md")
                 self.assertTrue(os.path.exists(expected_file))
                 
                 # Verify content contains both classes with correct features

@@ -36,4 +36,5 @@ dependencies = [
     "python-crontab>=3.2.0",
     "transformers>=4.53.1",
     "sentence-transformers>=5.0.0",
+    "docstring-parser>=0.16",
 ]

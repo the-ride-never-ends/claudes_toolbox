@@ -11,8 +11,8 @@ from typing import Any, Callable
 
 from configs import configs, Configs
 from logger import mcp_logger
-from utils._run_tool._return_text_content import return_text_content
-from utils._run_tool._return_tool_call_results import return_tool_call_results, CallToolResultType
+from server_utils._run_tool._return_text_content import return_text_content
+from server_utils._run_tool._return_tool_call_results import return_tool_call_results, CallToolResultType
 
 
 # Add the tools directory to the system path so we can reload tools dynamically.
@@ -84,7 +84,7 @@ class _RunTool:
             return self.result(result_string)
 
         except Exception as e:
-            mcp_logger.exception(f"Exception occurred while running function tool '{func.__name__}': {e}")
+            mcp_logger.exception(f"Exception occurred while running function tool '{func.__name__}': {e}\n{traceback.format_exc()}")
             return self.result(e)
 
 

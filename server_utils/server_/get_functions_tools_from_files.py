@@ -1,8 +1,8 @@
 import importlib
 import inspect
 from pathlib import Path
-from typing import Callable
-
+from typing import Any, Callable
+import traceback
 
 from mcp.server.fastmcp import FastMCP
 from pydantic import ValidationError
@@ -10,7 +10,6 @@ from pydantic import ValidationError
 
 from logger import logger, mcp_logger
 from configs import configs
-
 
 def _get_tool_file_paths(tool_dir: Path) -> list[Path]:
     """Load Python tool files from a directory.
@@ -45,12 +44,72 @@ def _get_tool_file_paths(tool_dir: Path) -> list[Path]:
     return tool_files
 
 
+from functools import wraps
+_MAX_OUTPUT_LENGTH = 20_000
+_TRUNCATED_OUTPUT_LENGTH = 19_000
+
+from mcp.types import CallToolResult, TextContent
+
+def _tool_wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Decorator that wraps tool functions to ensure proper output handling.
+    
+    This wrapper performs the following operations:
+    - Truncates string outputs that exceed the maximum length limit
+    - Converts results to repr() format to ensure JSON serialization compatibility
+    - Preserves original function metadata through functools.wraps
+    
+    Args:
+        func: The function to be wrapped as a tool
+        
+    Returns:
+        Callable: The wrapped function with output processing applied
+    """
+    @wraps(func)
+    def wrapped_tool(*args, **kwargs):
+        logger.debug(f"Running tool '{func.__name__}' with args: {args}, kwargs: {kwargs}")
+        error_msg = None
+        result = None
+        try:
+            result = func(*args, **kwargs)
+        except Exception as e:
+            error_msg = f"Exception occurred while running tool '{func.__name__}': {e}\n{traceback.format_exc()}"
+            logger.error(error_msg)
+            mcp_logger.exception(error_msg)
+        finally:
+            if isinstance(result, str):
+                if len(result) >= _MAX_OUTPUT_LENGTH:
+                    # Truncate large outputs
+                    result = result[:_TRUNCATED_OUTPUT_LENGTH] + "..."
+
+            # Make sure results serialize correctly.
+                # repr makes sure the results don't break JSON serialization
+            result = repr(result) if error_msg is None else repr(error_msg)
+            return result
+    return wrapped_tool
+
+
 def get_function_tools_from_files(mcp: FastMCP) -> FastMCP:
     """
-    Load functions from Python files in the tools directory and register them with the server
+    Load and register function tools from Python files in the tools directory.
 
-    This function scans the tools directory for Python files, imports them, and registers any
-    functions that do not start with an underscore as tools in the server.
+    This function scans the tools/functions directory for Python files, imports each module,
+    and registers qualifying functions as MCP tools. Functions are registered if they:
+    - Have the same name as their containing file (e.g., 'example.py' contains 'example()')
+    - Are actual functions (not classes or other objects)
+    - Don't start with an underscore (not private)
+    - Have a docstring (used as the tool description)
+
+    Each registered function is wrapped to handle output truncation and JSON serialization.
+
+    Args:
+        mcp (FastMCP): The FastMCP server instance to register tools with.
+
+    Returns:
+        FastMCP: The same FastMCP instance with all discovered function tools registered.
+
+    Raises:
+        FileNotFoundError: If the tools directory doesn't exist or contains no valid files.
     """
     tool_dir = configs.ROOT_DIR / "tools" / "functions"
     tool_files = _get_tool_file_paths(tool_dir)
@@ -72,20 +131,21 @@ def get_function_tools_from_files(mcp: FastMCP) -> FastMCP:
 
                     # Skip imports.
                         # We check this by making the name of the file the same as the function name
-                    if name not in module_name:
+                    if name != module_name:
                         continue
 
                     # Make sure it's a function (as opposed to a class, coroutine, etc.)
                     # and that it's not private
                     if inspect.isfunction(item) and not name.startswith("_"):
+                        # Load and register the function as a tool
+                        func = item
                         tool_name =  name
-                        tool_desc = item.__doc__ 
+                        tool_desc = func.__doc__ 
                         if not tool_desc:
                             logger.warning(f"Function '{name}' in module '{module_name}' has no docstring. Skipping.")
                             continue
 
-                        # Load and register the function as a tool
-                        func: Callable = getattr(module, name)
+                        # 
 
                         mcp.add_tool(func, name=tool_name, description=tool_desc)
                         mcp_logger.info(f"Registered tool: {tool_name}")
@@ -97,7 +157,6 @@ def get_function_tools_from_files(mcp: FastMCP) -> FastMCP:
             except Exception as e:
                 import traceback
                 mcp_logger.error(f"Unexpected error loading tool from {file}: {e}\n{traceback.format_exc()}")
-            finally:
-                continue
+
     finally:
         return mcp

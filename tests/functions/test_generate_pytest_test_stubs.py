@@ -2203,6 +2203,57 @@ class CustomDecoratedClass:
         self.assertIn("class TestCustomDecoratedClassClass", content)
         self.assertIn("class TestMyDecoratorFunction", content)
 
+    def test_template_real_life_example_ytdlp_wrapper(self):
+        """
+        GIVEN the Python file 'ytdlp_wrapper.py'.
+        WHEN template is rendered
+        THEN expect:
+            - Template generates appropriate test stubs for yt-dlp wrapper
+            - No duplicate assertions anywhere
+            - Nested classes and functions are skipped.
+        """
+        # Load in the yt-dlp wrapper content
+        ytdlp_wrapper_content_path = "/home/kylerose1946/ipfs_datasets_py/ipfs_datasets_py/multimedia/ytdlp_wrapper.py"
+        if not os.path.exists(ytdlp_wrapper_content_path):
+            raise FileNotFoundError(f"yt-dlp wrapper file not found at {ytdlp_wrapper_content_path}")
+
+        content = generate_pytest_test_stubs(ytdlp_wrapper_content_path, save_to_file=False)
+
+        # Check that the content is generated
+        for string in [
+            'assert YtDlpWrapper.__init__',
+            'assert YtDlpWrapper._download_playlist_with_ytdlp',
+            'assert YtDlpWrapper._download_with_ytdlp',
+            'assert YtDlpWrapper.batch_download',
+            'assert YtDlpWrapper.cleanup_downloads',
+            'assert YtDlpWrapper.download_playlist',
+            'assert YtDlpWrapper.download_video',
+            'assert YtDlpWrapper.extract_info',
+            'assert YtDlpWrapper.get_download_status',
+            'assert YtDlpWrapper.list_active_downloads',
+            'assert YtDlpWrapper.search_videos',
+            'assert YtDlpWrapper\n', # NOTE \n is intentional, as otherwise this matches all the other asserts too.
+            'assert YtDlpWrapper.default_output_dir',
+            'assert YtDlpWrapper.default_quality',
+            'assert YtDlpWrapper.downloads',
+            'assert YtDlpWrapper.enable_logging'
+        ]:
+            self.assertIn(string, content, f"Missing assertion: {string}")
+            # Check for no duplicates
+            self.assertEqual(content.count(string), 1, f"Duplicate assertion found: {string}")
+
+        # Check that this content is *not* generated.
+        # NOTE These are nested functions.
+        for string in [
+            'download_with_semaphore',
+            'playlist_progress_hook',
+            'progress_hook'
+        ]:
+            self.assertNotIn(string, content, f"Unexpected assertion found: {string}")
+
+
+
+
     # def test_template_whitespace_and_formatting(self):
     #     """
     #     GIVEN any valid Python file
