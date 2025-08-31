@@ -19,6 +19,9 @@ except ImportError:
 _ROOT_DIR = Path(__file__).parent
 
 
+class InitializationError(Exception):
+    """When a fatal error occurs during the initialization of the server."""
+
 @dataclass
 class Configs:
     """
@@ -105,7 +108,17 @@ class Configs:
 
 
 # Load the YAML file and parse it into the dataclass
-with open(_ROOT_DIR / "configs.yaml", "r") as f:
-    data = yaml.safe_load(f)
+try:
+    with open(_ROOT_DIR / "configs.yaml", "r") as f:
+        data = yaml.safe_load(f)
+except FileNotFoundError as e:
+    raise InitializationError(f"Configuration file not found: {e}") from e
+except yaml.error.YAMLError as e:
+    raise InitializationError(f"YAML error: {e}") from e
+except Exception as e:
+    raise InitializationError(f"Unexpected error loading configuration: {e}") from e
 
-configs = Configs(**data)
+try:
+    configs = Configs(**data)
+except Exception as e:
+    raise InitializationError(f"Unexpected error parsing configs: {e}") from e

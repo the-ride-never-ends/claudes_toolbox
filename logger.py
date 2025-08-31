@@ -4,8 +4,15 @@ from logging.handlers import RotatingFileHandler
 import os
 import traceback
 import sys
-from typing import Any, Callable
+from typing import Any, Annotated as Ann, Callable
 
+try:
+    from pydantic import validate_call, Field, PositiveInt, ValidationError, AfterValidator as AV
+
+except ImportError:
+    raise ImportError(
+        "Pydantic is required for this module. Please install it with 'pip install pydantic'."
+    )
 
 from configs import configs, Configs
 
@@ -22,12 +29,12 @@ def mcp_print(input: Any) -> None:
     """
     print(input, file=sys.stderr)
 
-
+@validate_call
 def get_logger(name: str,
                 log_file_name: str = 'app.log',
-                level: int = logging.INFO,
-                max_size: int = 5*1024*1024,
-                backup_count: int = 3
+                level:         Ann[PositiveInt, Field(gt=0)] = logging.INFO,
+                max_size:      Ann[PositiveInt, Field(gt=0)] = 5*1024*1024,
+                backup_count:  Ann[PositiveInt, Field(gt=0)] = 3
                 ) -> logging.Logger:
     """Sets up a logger with both file and console handlers.
 
@@ -45,6 +52,9 @@ def get_logger(name: str,
         # Usage
         logger = get_logger(__name__)
     """
+    if not log_file_name.strip():
+        raise ValueError("log_file_name cannot be empty or whitespace")
+
     # Create a custom logger
     logger = logging.getLogger(name)
     logger.setLevel(level)
@@ -132,7 +142,7 @@ class McpLogger:
         if self.log_level <= logging.CRITICAL:
             self._print(self._format_message("CRITICAL", message))
 
-    def exception(self, message: str, exc_info=True):
+    def exception(self, message: str, exc_info: bool = True):
         """Logs an exception message."""
         if self.log_level <= logging.ERROR:
             error_message = message
@@ -154,6 +164,14 @@ class McpLogger:
 
 
 # Instantiate the logger singletons.
-logger = get_logger(__name__, log_file_name=f'{configs.PROJECT_NAME}.log', level=configs.log_level)
+try:
+    logger = get_logger(__name__, log_file_name=f'{configs.PROJECT_NAME}.log', level=configs.log_level)
+except ValidationError as e:
+    raise TypeError(f"Invalid argument types were passed to logger: {e}") from e
+
 resources = {"print": mcp_print}
-mcp_logger = McpLogger(configs=configs, resources=resources)
+
+try:
+    mcp_logger = McpLogger(configs=configs, resources=resources)
+except Exception as e:
+    raise RuntimeError(f"Failed to instantiate McpLogger: {e}") from e

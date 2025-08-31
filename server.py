@@ -6,7 +6,10 @@ An MCP server for serving CLI programs and utility functions to LLMs.
 from __future__ import annotations
 import sys
 
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError:
+    raise ImportError("mcp is not installed. Please install it with `pip install mcp`.")
 
 from configs import configs
 from logger import mcp_logger

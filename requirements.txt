@@ -14,7 +14,6 @@ numpy # for numerical operations
 openai # for LLM api access from OpenAI
 psutil # for system and process utilities
 pydantic # for data validation and settings management
-pytest # for testing
 pyyaml # for YAML parsing
 tiktoken # for tokenization
 tqdm # for progress bars
@@ -27,3 +26,8 @@ playsound3
 python-crontab # for cron job management
 transformers # for NLP models
 sentence-transformers # for sentence embeddings
+
+# tests
+pytest
+pytest-asyncio
+pytest-cov

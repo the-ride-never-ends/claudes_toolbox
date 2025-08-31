@@ -20,7 +20,7 @@ set +a
 
 # Check if the server is already running
 if pgrep -f "source .venv/bin/activate && uv run server.py" > /dev/null; then
-    echo "Server is already running."
+    #echo "Server is already running."
     exit 0
 fi
 

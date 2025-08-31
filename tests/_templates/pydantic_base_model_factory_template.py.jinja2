@@ -1,0 +1,156 @@
+# Base Model File Path: {{ file_path_to_base_model }}
+# Auto-generated on {{ date }}
+
+try:
+    import pydantic
+except ImportError:
+    raise ImportError(
+        "Pydantic is required to use this data factory for {{ class_name }}. "
+        "Please install it with 'pip install pydantic'."
+    )
+
+
+from {{ resolved_local_import_path_to_base_model }} import {{ class_object }}
+
+
+class {{ class_name }}DataFactory:
+    """{{ class_description }}"""
+
+    @classmethod
+    def make_valid_baseline_data(cls) -> dict[str, Any]:
+        """
+        Create a complete dictionary of valid field values for {{ class_name }}.
+        
+        Returns:
+            Dict[str, Any]: Dictionary with all required fields populated with valid values 
+                for {{ class_name }} creation.
+        """
+
+        return {
+            {%- for field in fields %}
+            "{{ field.name }}": {{ field.valid_value }},
+            {%- endfor %}
+        }
+
+    @classmethod
+    def create_minimal_valid_data(cls) -> Dict[str, Any]:
+        """
+        Create minimal valid data using default values for LLMChunk.
+        
+        Returns:
+            Dict[str, Any]: Dictionary with minimal valid values and defaults for LLMChunk creation.
+        """
+        data = LLMChunkMetadataTestDataFactory.create_minimal_valid_data()
+        metadata = LLMChunkMetadata(**data)
+
+        return {
+            {%- for field in fields %}
+            "{{ field.name }}": {{ field.default_value }},
+            {%- endfor %}
+        }
+
+    @classmethod
+    def make_data_with_missing_fields(cls, field_names: str | list[str]) -> Dict[str, Any]:
+        """
+        Create valid data dictionary with one specific field removed for LLMChunk.
+        
+        Args:
+            field_name: Name or list of names of field(s) to exclude from the dictionary.
+            
+        Returns:
+            Dict[str, Any]: Valid data dictionary missing the specified field.
+
+        Raise:
+            KeyError: If the specified field is not found in the data dictionary.
+        """
+        data = cls.make_valid_baseline_data()
+        if isinstance(field_names, str):
+            field_names = [field_names]
+
+        for field_name in field_names:
+            if field_name in data:
+                del data[field_name]
+            else:
+                raise KeyError(f"Field '{field_name}' not found in data dictionary.")
+        return data
+
+    @classmethod
+    def make_data_with_invalid_types(cls, field_invalid_value_mappings: dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create data dictionary with one or more fields having invalid types for LLMChunk.
+        
+        Args:
+            field_invalid_value_mappings: Dictionary mapping field names to invalid types.
+            
+        Returns:
+            Dict[str, Any]: Data dictionary with specified fields having invalid types.
+
+        Raises:
+            KeyError: If any specified field is not found in the data dictionary.
+            ValueError: If the class object is instantiated successfully with invalid types.
+        """
+        data = cls.make_valid_baseline_data()
+
+        for field_name, invalid_value in field_invalid_value_mappings.items():
+            if field_name in data:
+                data[field_name] = invalid_value
+            else:
+                raise KeyError(f"Field '{field_name}' not found in data dictionary.")
+
+        try:
+            {{ class_object }}(**data)
+        except pydantic.ValidationError as e:
+            return data
+        else:
+            raise ValueError(
+                "{{ class_object }} instantiated successfully despite being given " 
+                f"supposedly invalid types: '{field_invalid_value_mappings}'"
+            )
+
+    @classmethod
+    def create_{{ class_name }}_instance(cls, **overrides) -> {{ class_object }}:
+        """
+        Create an instance of {{ class_object }} with optional overrides.
+        
+        Args:
+            **overrides: Optional keyword arguments to override default values.
+            
+        Returns:
+            {{ class_object }}: An instance of {{ class_object }} with specified overrides.
+        """
+        data = cls.make_valid_baseline_data()
+        if overrides:
+            if not isinstance(overrides, dict):
+                raise TypeError("Overrides must be provided as a dictionary.")
+            data.update(overrides)
+        try:
+            return {{ class_object }}(**data)
+        except pydantic.ValidationError as e:
+            raise ValueError(
+                f"Failed to create {{ class_object }} instance with data: {data}. "
+                f"Validation error: {e}"
+            )
+
+    @classmethod
+    def create_minimal_chunk_instance(cls, **overrides) -> LLMChunk:
+        """
+        Create a minimal LLMChunk instance with optional field overrides.
+        
+        Args:
+            **overrides: Field values to override in the minimal data.
+            
+        Returns:
+            LLMChunk: Minimal LLMChunk instance.
+        """
+        data = cls.create_minimal_valid_data()
+        if overrides:
+            if not isinstance(overrides, dict):
+                raise TypeError("Overrides must be provided as a dictionary.")
+            data.update(overrides)
+        try:
+            return {{ class_object }}(**data)
+        except pydantic.ValidationError as e:
+            raise ValueError(
+                f"Failed to create {{ class_object }} instance with data: {data}. "
+                f"Validation error: {e}"
+            )

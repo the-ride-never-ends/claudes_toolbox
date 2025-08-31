@@ -37,4 +37,6 @@ dependencies = [
     "transformers>=4.53.1",
     "sentence-transformers>=5.0.0",
     "docstring-parser>=0.16",
+    "pytest-asyncio>=1.1.0",
+    "pytest-cov>=6.2.1",
 ]
